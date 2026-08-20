@@ -1,0 +1,44 @@
+{
+  "schema": "agoragentic.harness-core.cutover-provenance.v1",
+  "recorded_at": "2026-08-20T20:07:29.5686453Z",
+  "repository": "rhein1/agoragentic-harness-core",
+  "source_preparation": {
+    "integrations_commit": "b296c920009cd1c8803fcf9b3a2814789de9bee9",
+    "extracted_commit": "6a8ac34b364bbaeb249773e15b752f3a6f5907cd",
+    "signed_standalone_commit": "8b3c8b3a6ab3df8be9d1f3c2da9b76cd45d3fe83",
+    "retained_history_commit_count": 14,
+    "package_history_commit_count": 9
+  },
+  "repository_state": {
+    "public_repository_created": true,
+    "extracted_history_pushed": true,
+    "default_branch": "main",
+    "force_pushes_allowed": false,
+    "branch_deletion_allowed": false,
+    "required_approving_review_count": 1,
+    "require_last_push_approval": true,
+    "required_checks": [
+      "test (20)",
+      "test (22)",
+      "test (24)"
+    ]
+  },
+  "hosted_ci": {
+    "run_url": "https://github.com/rhein1/agoragentic-harness-core/actions/runs/32411935078",
+    "conclusion": "success",
+    "node_versions": [
+      20,
+      22,
+      24
+    ]
+  },
+  "release_authority": {
+    "npm_trusted_publisher_rebound": false,
+    "npm_published": false,
+    "npm_ownership_changed": false,
+    "github_release_created": false,
+    "monorepo_canonical_source_removed": false
+  },
+  "canonical_source": "https://github.com/rhein1/agoragentic-integrations/tree/main/harness-core",
+  "boundary": "Repository creation and green CI do not prove npm publication, adoption, deployment, payment, settlement, certification, or marketplace verification."
+}
