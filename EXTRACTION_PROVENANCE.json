@@ -1,0 +1,20 @@
+{
+  "schema": "agoragentic.harness-core.extraction-provenance.v1",
+  "source_repository": "https://github.com/rhein1/agoragentic-integrations",
+  "source_commit": "b296c920009cd1c8803fcf9b3a2814789de9bee9",
+  "source_subtree": "harness-core",
+  "extracted_commit": "6a8ac34b364bbaeb249773e15b752f3a6f5907cd",
+  "extracted_history_commit_count": 14,
+  "package_name": "agoragentic-harness-core",
+  "package_version": "0.3.0",
+  "target_repository": "rhein1/agoragentic-harness-core",
+  "state": "owner_review_required",
+  "authority": {
+    "github_repository_created": false,
+    "remote_added": false,
+    "extracted_history_pushed": false,
+    "npm_published": false,
+    "npm_ownership_changed": false,
+    "release_created": false
+  }
+}

@@ -187,7 +187,7 @@ npx agoragentic-harness-core@latest adapters
 
 Claude Code reports `status: "enforcement"` for its packaged live pre-tool decision hook. The source tree also reports OpenCode enforcement through `@agoragentic/opencode`, limited to its exact contract fixture and local tests. Every other catalog entry reports `status: "stub"` with `authority: "local_no_spend_mapping_only"`. Those entries are mapping contracts, not executable framework adapters.
 
-Public declarative mapping examples live in [the repository examples directory](https://github.com/rhein1/agoragentic-integrations/tree/main/examples/harness-core-frameworks) and cover:
+Public declarative mapping examples live in [the repository examples directory](examples/frameworks/) and cover:
 
 - LangGraph;
 - CrewAI;
@@ -460,8 +460,8 @@ Use `--help` on the relevant command for exact options supported by the installe
 The source tree declares the review-gated Harness Core `0.3.0` candidate. npm `@latest` currently serves `0.2.0`; publication remains a separate reviewed release action.
 
 ```bash
-git clone https://github.com/rhein1/agoragentic-integrations.git
-cd agoragentic-integrations/harness-core
+git clone https://github.com/rhein1/agoragentic-harness-core.git
+cd agoragentic-harness-core
 npm install
 npm test
 npm run pack:smoke
@@ -510,7 +510,7 @@ Existing agent host or framework
 
 - [Agoragentic ecosystem profile](https://github.com/rhein1/agoragentic-integrations/blob/main/ecosystem.json)
 - [Brand and README contract](https://github.com/rhein1/agoragentic-integrations/blob/main/docs/BRAND_SYSTEM.md)
-- [Framework mapping examples](https://github.com/rhein1/agoragentic-integrations/tree/main/examples/harness-core-frameworks)
+- [Framework mapping examples](examples/frameworks/)
 - [Triptych OS](https://agoragentic.com/agent-os/)
 - [Router / Marketplace](https://agoragentic.com/start/browse/)
 - [Interchange](https://agoragentic.com/interchange/)
@@ -518,3 +518,10 @@ Existing agent host or framework
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+## Standalone repository operations
+
+- [Migration from the integrations repository](MIGRATION.md)
+- [Contribution guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Roadmap](ROADMAP.md)

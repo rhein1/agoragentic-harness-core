@@ -1,30 +1,19 @@
-# Harness Core Trusted Publishing
+# npm trusted publishing
 
-`agoragentic-harness-core` is package-ready but should not be published with a long-lived npm token.
+`agoragentic-harness-core` must publish from GitHub Actions through npm trusted publishing. Do not add an
+`NPM_TOKEN`, automation token, or local publish path.
 
-## Publication Gate
+Configure npm with:
 
-Publish only after:
+- Package: `agoragentic-harness-core`
+- GitHub owner: `rhein1`
+- Repository: `agoragentic-harness-core`
+- Workflow: `.github/workflows/publish.yml`
+- Environment: none unless a later reviewed release policy adds one
 
-- The source scaffold has merged to `main`.
-- `npm test` passes in `harness-core/`.
-- `npm run pack:smoke` installs the tarball outside the repository and resolves every exported schema.
-- `npm pack --dry-run` shows only intended files.
-- The npm package is configured for Trusted Publishing with this repository and workflow.
-- At least one external builder validates the local no-spend flow.
+The workflow accepts only a published GitHub release whose tag exactly equals `v<package.json version>`.
+It runs `npm ci`, package tests, framework-example validation, pack smoke, and an npm dry run before
+`npm publish --access public --provenance`.
 
-## Expected Trusted Publisher
-
-- npm package: `agoragentic-harness-core`
-- GitHub repository: `rhein1/agoragentic-integrations`
-- Workflow: `.github/workflows/publish-harness-core.yml`
-- Exact release tag: `harness-core-v<package.json version>`
-
-## Publish Flow
-
-1. Configure npm Trusted Publishing for the package.
-2. Merge the release-ready PR.
-3. Create a GitHub release with the exact package tag `harness-core-v0.3.0`.
-4. The workflow publishes from `harness-core/`.
-
-Do not add `NPM_TOKEN` for this package unless Trusted Publishing is unavailable and the token has been scoped, rotated, and documented.
+Repository extraction and green CI do not authorize publication. The owner must separately approve the
+release, configure the trusted publisher, and verify npm package source metadata after publication.

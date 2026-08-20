@@ -37,7 +37,7 @@ Do not export:
 
 ## Example Inventory
 
-The framework examples are recorded in `examples/harness-core-frameworks/framework-wrapping-examples.json`.
+The framework examples are recorded in `examples/frameworks/framework-wrapping-examples.json`.
 
 Required example IDs:
 

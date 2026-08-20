@@ -61,7 +61,12 @@
     "MEMORY_SKILLOPT.md",
     "README.md",
     "RELEASE_SCOPE.md",
-    "TRUSTED_PUBLISHING.md"
+    "TRUSTED_PUBLISHING.md",
+    "CONTRIBUTING.md",
+    "MIGRATION.md",
+    "ROADMAP.md",
+    "SECURITY.md",
+    "examples/"
   ],
   "dependencies": {
     "yaml": "^2.5.0"
@@ -76,12 +81,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rhein1/agoragentic-integrations.git",
-    "directory": "harness-core"
+    "url": "git+https://github.com/rhein1/agoragentic-harness-core.git"
   },
-  "homepage": "https://github.com/rhein1/agoragentic-integrations/tree/main/harness-core",
+  "homepage": "https://github.com/rhein1/agoragentic-harness-core",
   "bugs": {
-    "url": "https://github.com/rhein1/agoragentic-integrations/issues"
+    "url": "https://github.com/rhein1/agoragentic-harness-core/issues"
   },
   "publishConfig": {
     "access": "public"

@@ -8,7 +8,7 @@
 // — the failure modes that pass inside the monorepo but break after `npm
 // publish`. Exits non-zero on any failure.
 //
-//   node harness-core/scripts/pack-smoke.mjs
+//   node scripts/pack-smoke.mjs
 
 import { execFileSync } from 'node:child_process';
 import {
