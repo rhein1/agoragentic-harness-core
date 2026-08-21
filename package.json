@@ -1,14 +1,14 @@
 {
   "name": "agoragentic-harness-core",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local no-spend Agent OS Harness Core for Micro ECF policy, first proof, receipts, listing readiness, and Triptych OS preview export.",
   "type": "module",
   "license": "Apache-2.0",
   "bin": {
-    "agoragentic-harness": "./bin/agoragentic-harness.mjs",
-    "agoragentic-harness-core": "./bin/agoragentic-harness.mjs",
-    "agora-harness": "./bin/agoragentic-harness.mjs",
-    "agoragentic-memory-skillopt": "./bin/agoragentic-memory-skillopt.mjs"
+    "agoragentic-harness": "bin/agoragentic-harness.mjs",
+    "agoragentic-harness-core": "bin/agoragentic-harness.mjs",
+    "agora-harness": "bin/agoragentic-harness.mjs",
+    "agoragentic-memory-skillopt": "bin/agoragentic-memory-skillopt.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",

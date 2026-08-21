@@ -4,7 +4,7 @@
 
 - Verify the standalone filtered history and package at an exact source commit.
 - Establish required GitHub CI and release-only npm provenance.
-- Publish the review-gated `0.3.0` candidate only after owner authorization.
+- Publish and independently verify the `0.3.1` CLI-manifest recovery release.
 - Replace the integrations-repository implementation with a thin compatibility pointer after release.
 
 ## Near term

@@ -69,11 +69,34 @@ try {
   );
   run(npm, ['install', tarball, '--no-audit', '--no-fund'], consumer, true);
   const installedPackageRoot = path.join(consumer, 'node_modules', 'agoragentic-harness-core');
+  const installedPackage = JSON.parse(readFileSync(path.join(installedPackageRoot, 'package.json'), 'utf8'));
   const installedReadmePath = path.join(installedPackageRoot, 'README.md');
   const installedHeroPath = path.join(installedPackageRoot, 'assets', 'harness-core-product-hero.svg');
   const installedMemorySkillOptBin = path.join(installedPackageRoot, 'bin', 'agoragentic-memory-skillopt.mjs');
   if (!existsSync(installedHeroPath)) fail('installed package is missing assets/harness-core-product-hero.svg');
   if (!existsSync(installedMemorySkillOptBin)) fail('installed package is missing the Memory-SkillOpt CLI');
+
+  const expectedBins = {
+    'agora-harness': 'bin/agoragentic-harness.mjs',
+    'agoragentic-harness': 'bin/agoragentic-harness.mjs',
+    'agoragentic-harness-core': 'bin/agoragentic-harness.mjs',
+    'agoragentic-memory-skillopt': 'bin/agoragentic-memory-skillopt.mjs',
+  };
+  const normalizedInstalledBins = Object.fromEntries(
+    Object.entries(installedPackage.bin || {}).sort(([left], [right]) => left.localeCompare(right)),
+  );
+  const normalizedExpectedBins = Object.fromEntries(
+    Object.entries(expectedBins).sort(([left], [right]) => left.localeCompare(right)),
+  );
+  if (JSON.stringify(normalizedInstalledBins) !== JSON.stringify(normalizedExpectedBins)) {
+    fail(`installed package bin manifest changed: ${JSON.stringify(installedPackage.bin || null)}`);
+  }
+  const shimSuffix = process.platform === 'win32' ? '.cmd' : '';
+  for (const name of Object.keys(expectedBins)) {
+    if (!existsSync(path.join(consumer, 'node_modules', '.bin', `${name}${shimSuffix}`))) {
+      fail(`installed package is missing CLI shim: ${name}`);
+    }
+  }
 
   const installedReadme = readFileSync(installedReadmePath, 'utf8');
   const expectedReadmeArtifactTree = [
@@ -163,7 +186,7 @@ try {
     }
   }
 
-  console.log('SMOKE OK: packed, installed outside the monorepo, README assets/links, subpath imports, and init/validate/run all passed.');
+  console.log('SMOKE OK: packed, installed outside the monorepo, CLI manifest/shims, README assets/links, subpath imports, and init/validate/run all passed.');
   cleanup();
   process.exit(0);
 } catch (err) {
