@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.3.0 - Unreleased
+## 0.3.1 - Unreleased
+
+- Repaired npm CLI mappings so all four installed commands survive npm manifest normalization.
+- Added packed-manifest and installed-shim checks to the clean-room package smoke gate.
+
+## 0.3.0 - 2026-08-20
 
 - Added the packaged Harness Core hero and installed-package README link verification.
 - Narrowed receipt and adapter claims to the configuration/proposal evidence emitted by the package.

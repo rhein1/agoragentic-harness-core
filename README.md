@@ -457,7 +457,7 @@ Use `--help` on the relevant command for exact options supported by the installe
 
 ## Source development
 
-The source tree declares the review-gated Harness Core `0.3.0` candidate. npm `@latest` currently serves `0.2.0`; publication remains a separate reviewed release action.
+Published packages are built only from exact GitHub release tags through npm trusted publishing. The package smoke gate installs the packed artifact outside the source repository and verifies CLI shims, README assets and links, exported subpaths, schemas, and local no-spend commands before release.
 
 ```bash
 git clone https://github.com/rhein1/agoragentic-harness-core.git
