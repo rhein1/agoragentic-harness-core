@@ -1,6 +1,6 @@
 {
   "schema": "agoragentic.harness-core.cutover-provenance.v1",
-  "recorded_at": "2026-08-20T20:07:29.5686453Z",
+  "recorded_at": "2026-08-21T04:32:42.5138879Z",
   "repository": "rhein1/agoragentic-harness-core",
   "source_preparation": {
     "integrations_commit": "b296c920009cd1c8803fcf9b3a2814789de9bee9",
@@ -32,13 +32,24 @@
       24
     ]
   },
-  "release_authority": {
-    "npm_trusted_publisher_rebound": false,
-    "npm_published": false,
-    "npm_ownership_changed": false,
-    "github_release_created": false,
-    "monorepo_canonical_source_removed": false
+  "release_evidence": {
+    "version": "0.3.1",
+    "release_url": "https://github.com/rhein1/agoragentic-harness-core/releases/tag/v0.3.1",
+    "release_commit": "be6ecc806c87d332434efa265d0c44efe432028a",
+    "publish_run_url": "https://github.com/rhein1/agoragentic-harness-core/actions/runs/32444449246",
+    "npm_package": "agoragentic-harness-core@0.3.1",
+    "npm_integrity": "sha512-72w05AUaegIm1uVktCrDYRqtiD61jb1F6dVvY8H7Ks9/UYEuTN/3ViMq32NweCGy/9PZVLXeulBjIlD63ieoMg==",
+    "npm_attestations_url": "https://registry.npmjs.org/-/npm/v1/attestations/agoragentic-harness-core@0.3.1",
+    "integrations_cutover_pr": "https://github.com/rhein1/agoragentic-integrations/pull/345",
+    "integrations_cutover_commit": "c8bda88756f121b710b6599c8bf090921c9499b0"
   },
-  "canonical_source": "https://github.com/rhein1/agoragentic-integrations/tree/main/harness-core",
-  "boundary": "Repository creation and green CI do not prove npm publication, adoption, deployment, payment, settlement, certification, or marketplace verification."
+  "release_authority": {
+    "npm_trusted_publisher_rebound": true,
+    "npm_published": true,
+    "npm_ownership_changed": false,
+    "github_release_created": true,
+    "monorepo_canonical_source_removed": true
+  },
+  "canonical_source": "https://github.com/rhein1/agoragentic-harness-core",
+  "boundary": "The standalone repository, GitHub release, npm publication, and monorepo cutover are verified. They do not grant provider execution, wallet, payment, settlement, deployment, adoption, trust mutation, certification, or marketplace-publication authority."
 }

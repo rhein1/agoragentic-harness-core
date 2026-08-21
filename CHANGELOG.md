@@ -1,9 +1,11 @@
 # Changelog
 
-## 0.3.1 - Unreleased
+## 0.3.1 - 2026-08-21
 
 - Repaired npm CLI mappings so all four installed commands survive npm manifest normalization.
 - Added packed-manifest and installed-shim checks to the clean-room package smoke gate.
+- Published the standalone package through the repository's trusted-publisher workflow with npm provenance.
+- Completed the canonical-source cutover and replaced the integrations-repository implementation with a thin pointer.
 
 ## 0.3.0 - 2026-08-20
 
