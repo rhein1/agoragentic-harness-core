@@ -15,6 +15,7 @@ export const EVENT_TYPES = Object.freeze([
   'after_export',
   'approval_required',
   'guard_decision',
+  'adapter_observation',
   'artifact_written',
   'run_completed',
   'run_blocked',
@@ -97,8 +98,12 @@ export function sanitizeForPublicEvidence(value, options = {}) {
 export function sanitizeText(value, options = {}) {
   const maxLength = options.maxLength ?? 480;
   let text = String(value ?? '');
-  for (const [pattern, replacement] of SECRET_TEXT_PATTERNS) {
-    text = text.replace(pattern, replacement);
+  if (/^sha256:[a-f0-9]{64}$/i.test(text)) {
+    text = text.toLowerCase();
+  } else {
+    for (const [pattern, replacement] of SECRET_TEXT_PATTERNS) {
+      text = text.replace(pattern, replacement);
+    }
   }
   if (text.length > maxLength) return `${text.slice(0, maxLength)}...[truncated]`;
   return text;

@@ -20,6 +20,7 @@ The public package may include:
 - Harness JSON schemas and profiles.
 - Local run ledger, event kernel, proof, receipt, status, owner-inbox, review-gate, worktree-session, and schedule-intent artifacts.
 - Host evidence import adapters.
+- The observer-only Microsoft AHP `0.8.0` adapter: loopback root/session/chat observation, fixed-redaction metadata, and bounded artifacts in the existing local run ledger.
 - Framework-wrapping examples for LangGraph, CrewAI, MCP, Codex, Hermes, and the Rust reference runtime.
 - Rust reference runtime examples for self-hosted, local-only proof/export checks.
 - Tests proving local artifacts remain preview/readiness-only.
@@ -34,6 +35,15 @@ Do not export:
 - Private connector broker internals.
 - Full ECF private runtime, enterprise context graphs, customer evidence, or resident context.
 - Production admin routes, operator prompts, live deployment automation, or private analytics.
+- An AHP server facade, VS Code session hosting, AHP-to-ACP translation, agent-to-agent routing, write-capable AHP control, tool approvals, transport authentication, remote gateways, hosted AHP deployment, or Interchange integration.
+
+## AHP Observer Boundary
+
+The public AHP tranche is pinned to `@microsoft/agent-host-protocol` `0.8.0`, supports negotiated AHP `0.8.0` only, and preserves Node.js 18 compatibility with a dedicated `ws` transport rather than a global WebSocket patch. Live endpoints are loopback-only, and subscriptions are limited to explicitly allowed root, session, and chat channels.
+
+It observes sanitized snapshots, actions, and permitted notifications. It cannot dispatch actions; create or dispose sessions; create chats; write, delete, or move resources; provide or approve tools; send or claim terminal input; authenticate; run or mutate automations; or grant provider, wallet, x402, marketplace, trust, or owner-bypass authority. Raw messages, reasoning, tool payloads, authentication material, resource/terminal content, filesystem paths, environment values, and telemetry bodies are not retained.
+
+AHP sequence values are correlation evidence, not proof of delivery completeness or loss. OTLP and other telemetry observations are not an audit ledger. Harness Core's sanitized local receipt remains the durable evidence record, and an observed host or model-judge assessment does not become ECF authority. Governed AHP control requires a separate design and explicit approval.
 
 ## Example Inventory
 
@@ -61,3 +71,4 @@ The Rust runtime is a self-hosted reference runtime only. It may show how a loca
 - Rust runtime is framed as a reference runtime only.
 - Hosted Agent OS remains the commercial live product.
 - Tests prove examples and adapters keep preview/readiness-only authority.
+- Tests prove the AHP observer remains loopback-only, bounded, redacted, and incapable of write/control methods.

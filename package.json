@@ -13,6 +13,7 @@
   "exports": {
     ".": "./src/index.mjs",
     "./adapters": "./src/adapters/index.mjs",
+    "./adapters/ahp": "./src/adapters/ahp-observer.mjs",
     "./adapters/claude-code": "./src/adapters/claude-code.mjs",
     "./evaluations": "./src/evaluations/index.mjs",
     "./memory-skillopt": "./src/memory-skillopt.mjs",
@@ -26,6 +27,7 @@
     "./kernel/status": "./src/kernel/status.mjs",
     "./kernel/worktree-session": "./src/kernel/worktree-session.mjs",
     "./schema/agent-os-harness.v1.json": "./schema/agent-os-harness.v1.json",
+    "./schema/ahp-observation.v1.json": "./schema/ahp-observation.v1.json",
     "./schema/budget-policy.v1.json": "./schema/budget-policy.v1.json",
     "./schema/harness-approval-request.v1.json": "./schema/harness-approval-request.v1.json",
     "./schema/harness-context-import.v1.json": "./schema/harness-context-import.v1.json",
@@ -56,6 +58,7 @@
     "schema/",
     "templates/",
     "CHANGELOG.md",
+    "AHP_ADAPTER.md",
     "EVALUATION_ADAPTERS.md",
     "LICENSE",
     "MEMORY_SKILLOPT.md",
@@ -69,10 +72,12 @@
     "examples/"
   ],
   "dependencies": {
+    "@microsoft/agent-host-protocol": "0.8.0",
+    "ws": "8.21.3",
     "yaml": "^2.5.0"
   },
   "scripts": {
-    "test": "node --test test/cli.test.cjs test/evaluation-adapters.test.mjs test/memory-skillopt.test.mjs",
+    "test": "node --test test/cli.test.cjs test/evaluation-adapters.test.mjs test/memory-skillopt.test.mjs test/ahp-observer.test.mjs",
     "pack:smoke": "node scripts/pack-smoke.mjs",
     "prepublishOnly": "npm test && npm run pack:smoke"
   },

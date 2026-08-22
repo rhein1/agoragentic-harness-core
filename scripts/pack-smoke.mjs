@@ -143,6 +143,7 @@ try {
       const runModule = await import('agoragentic-harness-core/kernel/run');
       const registryModule = await import('agoragentic-harness-core/kernel/middleware-registry');
       const memorySkillOptModule = await import('agoragentic-harness-core/memory-skillopt');
+      const ahpModule = await import('agoragentic-harness-core/adapters/ahp');
       const require = createRequire(import.meta.url);
       const schemas = ${JSON.stringify(schemaFiles)};
       const resolvedSchemas = schemas.map((schema) => require.resolve('agoragentic-harness-core/schema/' + schema));
@@ -150,11 +151,16 @@ try {
         run: typeof runModule.executeHarnessRun === 'function',
         registry: typeof registryModule.MiddlewareRegistry === 'function',
         memorySkillOpt: typeof memorySkillOptModule.buildSkillOptTaskDraft === 'function',
+        ahpObserver: typeof ahpModule.observeAhp === 'function'
+          && typeof ahpModule.validateAhpObservationConfig === 'function'
+          && ahpModule.AHP_OBSERVER_SUPPORTED_PROTOCOL_VERSIONS.length === 1
+          && ahpModule.AHP_OBSERVER_SUPPORTED_PROTOCOL_VERSIONS[0] === '0.8.0'
+          && Object.values(ahpModule.AHP_OBSERVER_AUTHORITY_FLAGS).every((value) => value === false),
         schemas: resolvedSchemas.length === schemas.length,
       }));
     `,
   ], consumer));
-  if (!importCheck.run || !importCheck.registry || !importCheck.memorySkillOpt || !importCheck.schemas) {
+  if (!importCheck.run || !importCheck.registry || !importCheck.memorySkillOpt || !importCheck.ahpObserver || !importCheck.schemas) {
     fail(`installed package subpath import failed: ${JSON.stringify(importCheck)}`);
   }
 
