@@ -1239,7 +1239,12 @@ test('duration, request timeout, cancellation, event, artifact, frame, and malfo
       },
       messages: [action(ROOT_CHANNEL, 1, ActionType.RootConfigChanged, {})],
       keepOpen: true,
-    }, { max_events: 10, max_artifact_bytes: 81_920 });
+    }, {
+      max_events: 10,
+      max_artifact_bytes: 81_920,
+      duration_ms: 5_000,
+      request_timeout_ms: 1_000,
+    });
     assert.equal(run.result.status, 'partial');
     assert.equal(run.result.termination_reason, 'artifact_limit');
     const sizes = await Promise.all(run.artifacts.names.map(async (name) => (
