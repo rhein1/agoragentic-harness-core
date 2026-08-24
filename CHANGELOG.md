@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-24
+
 - Added an observer-only Microsoft Agent Host Protocol adapter using the exact `@microsoft/agent-host-protocol` `0.8.0` dependency and explicit AHP `0.8.0` negotiation support.
 - Added a dedicated Node 18-compatible `ws` transport, deterministic in-memory tests, loopback-only endpoint validation, fixed redaction, bounded local run-ledger artifacts, and a forced-false authority schema.
 - Documented that AHP sequence and telemetry observations are correlation evidence—not receipts, loss proof, an audit ledger, ECF authority, or permission to control an AHP host.
