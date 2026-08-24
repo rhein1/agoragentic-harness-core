@@ -206,6 +206,7 @@ export async function observeAhp(config = {}) {
   let acceptingRecords = true;
   let writeTail = Promise.resolve();
   const drainTasks = [];
+  const subscriptionCleanupChannels = new Set();
 
   const enqueueWrite = (operation) => {
     const result = writeTail.then(operation);
@@ -298,7 +299,15 @@ export async function observeAhp(config = {}) {
         channels: normalized.channels,
         onInbound: async (message, frameBytes, requestContext) => {
           if (controller.stopped || !acceptingRecords) return;
-          await handleInboundMessage(message, frameBytes, aggregate, appendRecord, controller, requestContext);
+          await handleInboundMessage(
+            message,
+            frameBytes,
+            aggregate,
+            appendRecord,
+            controller,
+            requestContext,
+            subscriptionCleanupChannels,
+          );
         },
         onClosed: () => {
           aggregate.transport_closed = true;
@@ -340,6 +349,7 @@ export async function observeAhp(config = {}) {
       for (const channel of normalized.channels.slice(1)) {
         if (controller.stopped) break;
         markChannelPending(aggregate, channel);
+        subscriptionCleanupChannels.add(channel);
         const subscribeOutcome = await operationOrStop(client.subscribe(channel), controller);
         if (subscribeOutcome.error) {
           controller.stop(classifyRuntimeError(subscribeOutcome.error, 'subscribe_failed'), 'blocked');
@@ -372,13 +382,25 @@ export async function observeAhp(config = {}) {
     acceptingRecords = false;
     const pendingWrites = writeTail;
     const cleanupTimeoutMs = Math.max(50, Math.min(250, normalized.limits.request_timeout_ms));
+    const shutdownReserveMs = Math.max(25, Math.floor(cleanupTimeoutMs / 2));
+    const unsubscribeTimeoutMs = cleanupTimeoutMs - shutdownReserveMs;
+    const cleanupStartedAt = Date.now();
+    const unsubscribeSettled = await settleWithin(
+      releaseObserverSubscriptions(client, guardedTransport, subscriptionCleanupChannels),
+      unsubscribeTimeoutMs,
+    );
+    if (!unsubscribeSettled) addWarning(aggregate, 'unsubscribe_cleanup_incomplete');
+    const shutdownTimeoutMs = Math.max(
+      shutdownReserveMs,
+      cleanupTimeoutMs - (Date.now() - cleanupStartedAt),
+    );
     const shutdown = Promise.allSettled([
       Promise.resolve().then(() => client?.shutdown()),
       Promise.resolve().then(() => guardedTransport?.close()),
     ]);
     const cleanupSettled = await settleWithin(
       Promise.allSettled([shutdown, ...drainTasks]),
-      cleanupTimeoutMs,
+      shutdownTimeoutMs,
     );
     if (!cleanupSettled) addWarning(aggregate, 'transport_close_timeout');
     await pendingWrites;
@@ -566,10 +588,15 @@ function validateChannels(value) {
 function createObserverTransport(inner, options) {
   let initialized = false;
   let closed = false;
+  let failed = false;
+  let remoteClosed = false;
+  let unsubscribeAttemptCount = 0;
+  let outboundFailureCount = 0;
   const pendingRequests = new Map();
+  const inFlightSends = new Set();
   return Object.freeze({
     async send(value) {
-      if (closed) throw observerError('transport_closed');
+      if (closed || failed || remoteClosed) throw observerError('transport_closed');
       let message;
       try {
         message = typeof value === 'string' ? JSON.parse(value) : value;
@@ -584,12 +611,21 @@ function createObserverTransport(inner, options) {
           channel: message.params?.channel,
         });
       }
+      if (message.method === 'unsubscribe') unsubscribeAttemptCount += 1;
       try {
-        return await inner.send(value);
+        const sending = Promise.resolve(inner.send(value));
+        inFlightSends.add(sending);
+        try {
+          return await sending;
+        } finally {
+          inFlightSends.delete(sending);
+        }
       } catch (error) {
+        failed = true;
+        outboundFailureCount += 1;
         if (Number.isSafeInteger(message.id)) pendingRequests.delete(message.id);
         const code = classifyRuntimeError(error, 'transport_error');
-        options.onFailure(code);
+        if (!closed) options.onFailure(code);
         throw observerError(code);
       }
     },
@@ -600,11 +636,13 @@ function createObserverTransport(inner, options) {
       try {
         frame = await inner.recv();
       } catch (error) {
+        failed = true;
         const code = classifyRuntimeError(error, 'transport_error');
         options.onFailure(code);
         throw observerError(code);
       }
       if (frame === null) {
+        remoteClosed = true;
         options.onClosed();
         return null;
       }
@@ -617,6 +655,7 @@ function createObserverTransport(inner, options) {
         if (requestContext) pendingRequests.delete(message.id);
         return { kind: 'parsed', message };
       } catch (error) {
+        failed = true;
         const code = classifyRuntimeError(error, 'observer_runtime_error');
         options.onFailure(code);
         try { await inner.close(); } catch { /* bounded failure already recorded */ }
@@ -628,6 +667,23 @@ function createObserverTransport(inner, options) {
       if (closed) return;
       closed = true;
       await inner.close();
+    },
+
+    isOpen() {
+      return !closed && !failed && !remoteClosed;
+    },
+
+    outboundFailureCount() {
+      return outboundFailureCount;
+    },
+
+    unsubscribeAttemptCount() {
+      return unsubscribeAttemptCount;
+    },
+
+    async settleOutbound() {
+      const outcomes = await Promise.allSettled([...inFlightSends]);
+      return outcomes.every((outcome) => outcome.status === 'fulfilled');
     },
   });
 }
@@ -730,10 +786,25 @@ function validateInboundMessage(message) {
   }
 }
 
-async function handleInboundMessage(message, frameBytes, aggregate, appendRecord, controller, requestContext) {
+async function handleInboundMessage(
+  message,
+  frameBytes,
+  aggregate,
+  appendRecord,
+  controller,
+  requestContext,
+  subscriptionCleanupChannels,
+) {
   if (!Object.hasOwn(message, 'method')) {
     if (requestContext && Object.hasOwn(message, 'result')) {
-      await handleObservedResponse(message.result, requestContext, aggregate, appendRecord, controller);
+      await handleObservedResponse(
+        message.result,
+        requestContext,
+        aggregate,
+        appendRecord,
+        controller,
+        subscriptionCleanupChannels,
+      );
     }
     return;
   }
@@ -874,7 +945,14 @@ async function persistActionRecord(record, equalityFingerprint, aggregate, appen
   });
 }
 
-async function handleObservedResponse(result, requestContext, aggregate, appendRecord, controller) {
+async function handleObservedResponse(
+  result,
+  requestContext,
+  aggregate,
+  appendRecord,
+  controller,
+  subscriptionCleanupChannels,
+) {
   if (!isPlainRecord(result)) {
     controller.stop(requestContext.method === 'initialize' ? 'malformed_initialize_result' : 'malformed_snapshot', 'blocked');
     return;
@@ -901,6 +979,9 @@ async function handleObservedResponse(result, requestContext, aggregate, appendR
       controller.stop('malformed_snapshot', 'blocked');
       return;
     }
+    // Cleanup eligibility follows the validated wire response rather than the
+    // later artifact commit, which can finish after the observation deadline.
+    subscriptionCleanupChannels.add('ahp-root://');
     const accepted = await appendRecord(record, 'info', () => {
       aggregate.negotiated_version = result.protocolVersion;
       aggregate.initialize_server_seq = result.serverSeq;
@@ -1593,6 +1674,29 @@ async function drainSubscription(subscription) {
     }
   } catch {
     // Shutdown and malformed transports terminate subscription iterators.
+  }
+}
+
+async function releaseObserverSubscriptions(client, transport, channels) {
+  if (!client || !transport || channels.size === 0) return;
+  if (client.connectionState.status !== 'connected' || !transport.isOpen()) return;
+  const failureCount = transport.outboundFailureCount();
+  try {
+    for (const channel of [...channels].reverse()) {
+      if (client.connectionState.status !== 'connected' || !transport.isOpen()) {
+        throw observerError('unsubscribe_cleanup_incomplete');
+      }
+      const attemptCount = transport.unsubscribeAttemptCount();
+      await client.unsubscribe(channel);
+      const settled = await transport.settleOutbound();
+      if (transport.unsubscribeAttemptCount() !== attemptCount + 1
+        || !settled
+        || transport.outboundFailureCount() !== failureCount) {
+        throw observerError('unsubscribe_cleanup_incomplete');
+      }
+    }
+  } catch {
+    throw observerError('unsubscribe_cleanup_incomplete');
   }
 }
 

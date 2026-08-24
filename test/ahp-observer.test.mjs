@@ -756,7 +756,14 @@ test('protocol negotiation and malformed state fail closed with bounded artifact
       assert.equal(run.result.status, 'blocked');
       assert.equal(run.result.termination_reason, 'malformed_snapshot');
       assert.equal(run.artifacts.summary.protocol.negotiated_version, '0.8.0');
-      assert.deepEqual(run.outbound.map((message) => message.method), item.methods);
+      assert.deepEqual(
+        run.outbound.map((message) => message.method),
+        [...item.methods, ...item.channels.map(() => 'unsubscribe')],
+      );
+      assert.deepEqual(
+        run.outbound.filter((message) => message.method === 'unsubscribe').map((message) => message.params.channel),
+        [...item.channels].reverse(),
+      );
       assert.equal(run.outbound.filter((message) => message.method === 'initialize').length, 1);
     });
   }
@@ -1170,6 +1177,46 @@ test('duration, request timeout, cancellation, event, artifact, frame, and malfo
     assert.equal(artifacts.allText.includes('PRIVATE-LATE-SNAPSHOT'), false);
   });
 
+  await t.test('validated negotiation releases root when artifact commit crosses the deadline', async (subtest) => {
+    const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'ahp-delayed-negotiation-write-test-'));
+    subtest.after(() => fs.rm(temp, { recursive: true, force: true }));
+    const [client, server] = InMemoryTransport.pair();
+    const driver = scriptedServer(server, { keepOpen: true });
+    const originalAppendFile = fs.appendFile;
+    let appendCalls = 0;
+    fs.appendFile = async (...args) => {
+      appendCalls += 1;
+      if (appendCalls === 2) await new Promise((resolve) => setTimeout(resolve, 150));
+      return originalAppendFile(...args);
+    };
+
+    let result;
+    try {
+      result = await observeAhp({
+        dir: temp,
+        transport: client,
+        duration_ms: 100,
+        request_timeout_ms: 100,
+        now: () => FIXED_TIME,
+      });
+    } finally {
+      fs.appendFile = originalAppendFile;
+    }
+    await driver.done;
+
+    assert.equal(appendCalls >= 3, true);
+    assert.equal(result.status, 'blocked');
+    assert.equal(result.termination_reason, 'initialize_failed');
+    assert.deepEqual(driver.outbound.map((message) => message.method), ['initialize', 'unsubscribe']);
+    const unsubscribe = driver.outbound.at(-1);
+    assert.equal(Object.hasOwn(unsubscribe, 'id'), false);
+    assert.deepEqual(unsubscribe.params, { channel: ROOT_CHANNEL });
+    const artifacts = await readRunArtifacts(temp, result);
+    assert.equal(artifacts.summary.protocol.negotiated_version, '0.8.0');
+    assert.equal(artifacts.summary.counts.snapshots, 1);
+    assert.equal(artifacts.summary.warnings.includes('unsubscribe_cleanup_incomplete'), false);
+  });
+
   await t.test('pending root overflow before unanswered initialize normalizes to blocked', async (subtest) => {
     const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'ahp-root-pending-overflow-test-'));
     subtest.after(() => fs.rm(temp, { recursive: true, force: true }));
@@ -1272,7 +1319,14 @@ test('duration, request timeout, cancellation, event, artifact, frame, and malfo
     await serverDone;
     assert.equal(result.status, 'partial');
     assert.equal(result.termination_reason, 'subscribe_failed');
-    assert.deepEqual(outbound.map((message) => message.method), ['initialize', 'subscribe']);
+    assert.deepEqual(
+      outbound.map((message) => message.method),
+      ['initialize', 'subscribe', 'unsubscribe', 'unsubscribe'],
+    );
+    assert.deepEqual(
+      outbound.filter((message) => message.method === 'unsubscribe').map((message) => message.params.channel),
+      [SESSION_CHANNEL, ROOT_CHANNEL],
+    );
     const artifacts = await readRunArtifacts(temp, result);
     assert.equal(artifacts.summary.protocol.negotiated_version, '0.8.0');
     assert.equal(artifacts.summary.counts.snapshots, 1);
@@ -1663,6 +1717,151 @@ test('digest and per-event summaries truncate explicitly at their fixed bounds',
   assert.equal(run.artifacts.summary.counts.persisted_events, 141);
   assert.equal(run.artifacts.events.length, 143);
   assert.doesNotMatch(run.artifacts.allText, /BOUNDED-PRIVATE|PRIVATE-OTLP|PRIVATE-TERMINAL|truncation-fixture/);
+});
+
+test('open observations release negotiated and attempted subscriptions in reverse order', async (t) => {
+  const channels = [ROOT_CHANNEL, SESSION_CHANNEL, CHAT_CHANNEL];
+  const run = await runScenario(t, {
+    channels,
+    subscribeSnapshots: {
+      [SESSION_CHANNEL]: snapshot(SESSION_CHANNEL, 0, {}),
+      [CHAT_CHANNEL]: snapshot(CHAT_CHANNEL, 0, {}),
+    },
+    keepOpen: true,
+  }, {
+    channels,
+    duration_ms: 75,
+    request_timeout_ms: 50,
+  });
+
+  assert.equal(run.result.status, 'completed');
+  assert.equal(run.result.termination_reason, 'duration_limit');
+  assert.deepEqual(run.outbound.map((message) => message.method), [
+    'initialize',
+    'subscribe',
+    'subscribe',
+    'unsubscribe',
+    'unsubscribe',
+    'unsubscribe',
+  ]);
+  const unsubscribes = run.outbound.filter((message) => message.method === 'unsubscribe');
+  assert.deepEqual(unsubscribes.map((message) => message.params.channel), [...channels].reverse());
+  assert.ok(unsubscribes.every((message) => !Object.hasOwn(message, 'id')));
+  assert.ok(unsubscribes.every((message) => (
+    Object.keys(message.params).length === 1 && Object.hasOwn(message.params, 'channel')
+  )));
+});
+
+test('unsubscribe cleanup waits for transport sends before closing', async (t) => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'ahp-unsubscribe-flush-test-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const [baseClient, server] = InMemoryTransport.pair();
+  const lifecycle = [];
+  let closeCalls = 0;
+  const transport = {
+    async send(value) {
+      const message = typeof value === 'string' ? JSON.parse(value) : value;
+      if (message.method !== 'unsubscribe') return baseClient.send(value);
+      lifecycle.push('unsubscribe_send_started');
+      baseClient.send(value);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      lifecycle.push('unsubscribe_send_settled');
+    },
+    recv() {
+      return baseClient.recv();
+    },
+    async close() {
+      closeCalls += 1;
+      lifecycle.push('transport_close');
+      await baseClient.close();
+    },
+  };
+  const driver = scriptedServer(server, { keepOpen: true });
+
+  const result = await observeAhp({
+    dir: temp,
+    transport,
+    duration_ms: 100,
+    request_timeout_ms: 75,
+    now: () => FIXED_TIME,
+  });
+  await driver.done;
+
+  assert.equal(result.status, 'completed');
+  assert.equal(result.termination_reason, 'duration_limit');
+  assert.deepEqual(lifecycle, [
+    'unsubscribe_send_started',
+    'unsubscribe_send_settled',
+    'transport_close',
+  ]);
+  assert.equal(closeCalls, 1);
+  assert.deepEqual(driver.outbound.map((message) => message.method), ['initialize', 'unsubscribe']);
+});
+
+test('hung and failing unsubscribe cleanup stays bounded and warning-only', async (t) => {
+  for (const mode of ['hung', 'failed']) {
+    await t.test(mode, async (subtest) => {
+      const temp = await fs.mkdtemp(path.join(os.tmpdir(), `ahp-unsubscribe-${mode}-test-`));
+      subtest.after(() => fs.rm(temp, { recursive: true, force: true }));
+      const [baseClient, server] = InMemoryTransport.pair();
+      const privateFailure = 'PRIVATE-UNSUBSCRIBE-SEND-FAILURE';
+      let closeCalls = 0;
+      const transport = {
+        async send(value) {
+          const message = typeof value === 'string' ? JSON.parse(value) : value;
+          if (message.method !== 'unsubscribe') return baseClient.send(value);
+          if (mode === 'failed') throw new Error(privateFailure);
+          return new Promise(() => {});
+        },
+        recv() {
+          return baseClient.recv();
+        },
+        async close() {
+          closeCalls += 1;
+          await baseClient.close();
+        },
+      };
+      const driver = scriptedServer(server, { keepOpen: true });
+      const started = Date.now();
+      const result = await observeAhp({
+        dir: temp,
+        transport,
+        duration_ms: 50,
+        request_timeout_ms: 25,
+        now: () => FIXED_TIME,
+      });
+      await driver.done;
+
+      assert.ok(Date.now() - started < 750);
+      assert.equal(result.status, 'completed');
+      assert.equal(result.termination_reason, 'duration_limit');
+      assert.equal(closeCalls, 1);
+      const artifacts = await readRunArtifacts(temp, result);
+      assert.ok(artifacts.summary.warnings.includes('unsubscribe_cleanup_incomplete'));
+      assert.equal(artifacts.allText.includes(privateFailure), false);
+    });
+  }
+});
+
+test('unsubscribe cleanup is skipped after failed negotiation or remote close', async (t) => {
+  await t.test('failed negotiation', async (subtest) => {
+    const run = await runScenario(subtest, {
+      initializeResult: { protocolVersion: '0.7.0', serverSeq: 0, snapshots: [] },
+      keepOpen: true,
+    });
+    assert.equal(run.result.status, 'blocked');
+    assert.equal(run.result.termination_reason, 'unsupported_protocol_version');
+    assert.deepEqual(run.outbound.map((message) => message.method), ['initialize']);
+    assert.equal(run.artifacts.summary.warnings.includes('unsubscribe_cleanup_incomplete'), false);
+  });
+
+  await t.test('remote close', async (subtest) => {
+    const run = await runScenario(subtest);
+    assert.equal(run.result.status, 'completed');
+    assert.equal(run.result.termination_reason, 'transport_closed');
+    assert.deepEqual(run.outbound.map((message) => message.method), ['initialize']);
+    assert.equal(run.artifacts.summary.warnings.includes('unsubscribe_cleanup_incomplete'), false);
+  });
 });
 
 test('misbehaving injected transport cannot hang bounded observer shutdown', async (t) => {

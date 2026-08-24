@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Attempt to release negotiated or attempted AHP observer subscriptions in reverse order before transport close, with bounded send tracking and warning-only evidence when cleanup cannot complete.
+
 ## 0.4.0 - 2026-08-24
 
 - Added an observer-only Microsoft Agent Host Protocol adapter using the exact `@microsoft/agent-host-protocol` `0.8.0` dependency and explicit AHP `0.8.0` negotiation support.

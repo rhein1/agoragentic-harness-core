@@ -28,7 +28,7 @@ import {
 } from 'agoragentic-harness-core/adapters/ahp';
 ```
 
-`validateAhpObservationConfig(config)` validates the endpoint or injected transport, exact channel allowlist, and duration, event-count, frame-size, artifact-size, and request-timeout bounds. Protocol support and redaction are fixed rather than caller-configurable. `observeAhp(config)` also verifies the local artifact root, performs one bounded observation, closes its transport, writes sanitized local evidence, and returns a structured summary. It does not return an AHP client or transport handle.
+`validateAhpObservationConfig(config)` validates the endpoint or injected transport, exact channel allowlist, and duration, event-count, frame-size, artifact-size, and request-timeout bounds. Protocol support and redaction are fixed rather than caller-configurable. `observeAhp(config)` also verifies the local artifact root, performs one bounded observation, closes its transport, writes sanitized local evidence, and returns a structured summary. When a negotiated transport remains open at cleanup, the observer attempts to emit ID-less `unsubscribe` notifications for negotiated or attempted channels in reverse order and waits for their tracked transport sends only within a bounded portion of the existing cleanup deadline, reserving the rest for shutdown. This is a bounded cleanup attempt, not proof that the host accepted or completed the release. The observer does not return an AHP client or transport handle.
 
 There is no AHP CLI command in this tranche. Observation remains an explicit programmatic call; there is no daemon, scheduler, background mode, retry loop, or automatic reconnect.
 
