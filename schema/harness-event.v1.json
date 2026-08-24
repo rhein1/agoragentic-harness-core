@@ -11,7 +11,7 @@
     "run_id": { "type": "string", "minLength": 1 },
     "type": {
       "type": "string",
-      "enum": ["before_agent", "after_agent", "before_policy", "after_policy", "before_tool", "after_tool", "before_receipt", "after_receipt", "before_export", "after_export", "approval_required", "guard_decision", "artifact_written", "run_completed", "run_blocked"]
+      "enum": ["before_agent", "after_agent", "before_policy", "after_policy", "before_tool", "after_tool", "before_receipt", "after_receipt", "before_export", "after_export", "approval_required", "guard_decision", "adapter_observation", "artifact_written", "run_completed", "run_blocked"]
     },
     "created_at": { "type": "string" },
     "severity": { "type": "string", "enum": ["info", "warning", "blocked", "error"] },

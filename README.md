@@ -60,7 +60,7 @@ Agent frameworks are good at running tools. They are not all designed to answer 
 - What remains blocked or unknown?
 - Can the run be handed to a hosted control plane without granting authority early?
 
-Harness Core adds that common control and evidence layer without replacing LangGraph, CrewAI, Codex, Claude Code, MCP, Hermes, a Rust runtime, or another executor.
+Harness Core adds that common control and evidence layer without replacing LangGraph, CrewAI, Codex, Claude Code, MCP, Microsoft Agent Host Protocol (AHP), Hermes, a Rust runtime, or another executor.
 
 ## Five-minute proof
 
@@ -185,7 +185,7 @@ List the packaged adapter contracts:
 npx agoragentic-harness-core@latest adapters
 ```
 
-Claude Code reports `status: "enforcement"` for its packaged live pre-tool decision hook. The source tree also reports OpenCode enforcement through `@agoragentic/opencode`, limited to its exact contract fixture and local tests. Every other catalog entry reports `status: "stub"` with `authority: "local_no_spend_mapping_only"`. Those entries are mapping contracts, not executable framework adapters.
+Claude Code reports `status: "enforcement"` for its packaged live pre-tool decision hook. The source tree also reports OpenCode enforcement through `@agoragentic/opencode`, limited to its exact contract fixture and local tests. The AHP entry, `ahp`, reports `status: "observer"` with `authority: "local_no_spend_observation_only"`. Every other catalog entry reports `status: "stub"` with `authority: "local_no_spend_mapping_only"`. Stub entries are mapping contracts, not executable framework adapters.
 
 Public declarative mapping examples live in [the repository examples directory](examples/frameworks/) and cover:
 
@@ -211,6 +211,20 @@ optional owner-reviewed Agent OS preview export
 ```
 
 A mapping contract must not be presented as executable integration support. Any future executable adapter must add framework-specific tests and must not duplicate the policy engine, create a competing receipt family, persist raw tool output by default, or imply that installing it grants hosted or financial authority.
+
+### Microsoft Agent Host Protocol observation
+
+The packaged AHP adapter uses `@microsoft/agent-host-protocol` `0.8.0` to observe synchronized agent sessions through AHP `0.8.0`. It initializes, subscribes only to explicitly allowed root/session/chat channels, consumes snapshots and permitted notifications, and writes fixed-redaction metadata into the existing bounded Harness run ledger.
+
+Node.js 18 remains supported. Tests use the official in-memory transport; live local observation uses a narrowly scoped `ws` transport without monkey-patching the global WebSocket implementation. V1 accepts loopback `ws://` or `wss://` endpoints only and rejects remote endpoints and URL credentials.
+
+The public subpath `agoragentic-harness-core/adapters/ahp` exports constants plus `validateAhpObservationConfig` and `observeAhp`. It exposes no AHP client or control handle and has no CLI, daemon, retry loop, reconnect loop, multi-host fan-out, server facade, authentication, or gateway mode.
+
+AHP synchronizes shared host/client agent sessions. It is not MCP, ACP, A2A, or the Agoragentic Interchange, and this adapter does not translate or connect those protocols. This tranche does not govern or execute an AHP action. It does not dispatch actions, create or dispose sessions, create chats, approve or execute tools, provide client tools, send or claim terminal input, mutate resources or automations, authenticate protected resources, or grant provider, wallet, x402, marketplace, trust, or owner-bypass authority.
+
+AHP `serverSeq` values are bounded correlation evidence, not proof of complete delivery, message loss, side effects, or an Agoragentic receipt. Raw messages, reasoning, tool inputs/results, bearer or authentication material, resource/terminal contents, filesystem paths, environment values, and telemetry bodies—including raw OTLP—are never persisted. Telemetry is not a durable audit ledger; Harness Core's sanitized local run artifacts remain the durable evidence layer. A model-judge score observed through AHP does not become ECF authority.
+
+See [Agent Host Protocol observer adapter](AHP_ADAPTER.md) for compatibility, artifacts, the complete forced-false authority matrix, and security boundaries. Governed AHP control would require a separate design and separate approval.
 
 ## Policy, approvals, and review gates
 
@@ -482,6 +496,7 @@ Harness Core is the public package boundary for:
 - context references;
 - review-gated Memory task export and specialist-engine evaluation evidence;
 - host/framework adapters;
+- bounded, observer-only AHP session evidence;
 - Agent OS preview exports.
 
 See [Selective OSS Release Scope](RELEASE_SCOPE.md).

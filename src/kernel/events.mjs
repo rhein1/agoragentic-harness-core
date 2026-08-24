@@ -15,6 +15,7 @@ export const EVENT_TYPES = Object.freeze([
   'after_export',
   'approval_required',
   'guard_decision',
+  'adapter_observation',
   'artifact_written',
   'run_completed',
   'run_blocked',

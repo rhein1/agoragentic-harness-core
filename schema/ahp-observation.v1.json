@@ -1,0 +1,315 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agoragentic.com/schema/ahp-observation.v1.json",
+  "title": "Agoragentic Harness AHP Observation v1",
+  "description": "Bounded, redacted, local-only Agent Host Protocol 0.8.0 observation evidence. This artifact grants no control, authentication, spend, settlement, publication, trust, provider, automation, or approval authority.",
+  "type": "object",
+  "required": [
+    "schema",
+    "observation_id",
+    "adapter",
+    "adapter_version",
+    "created_at",
+    "completed_at",
+    "status",
+    "termination_reason",
+    "mode",
+    "protocol",
+    "source",
+    "scope",
+    "limits",
+    "counts",
+    "sequence",
+    "warnings",
+    "source_event_digests",
+    "source_event_digest_count",
+    "source_event_digests_truncated",
+    "source_event_stream_digest",
+    "claims",
+    "authority",
+    "output_digest"
+  ],
+  "properties": {
+    "schema": { "const": "agoragentic.harness.ahp-observation.v1" },
+    "observation_id": { "type": "string", "pattern": "^run_[a-f0-9]{12}$" },
+    "adapter": { "const": "ahp_observer" },
+    "adapter_version": { "const": "1.0.0" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["completed", "partial", "blocked", "cancelled"] },
+    "termination_reason": {
+      "enum": [
+        "duration_limit",
+        "event_limit",
+        "artifact_limit",
+        "transport_closed",
+        "transport_error",
+        "cancelled",
+        "request_timeout",
+        "initialize_failed",
+        "subscribe_failed",
+        "unsupported_protocol_version",
+        "malformed_initialize_result",
+        "malformed_snapshot",
+        "malformed_action",
+        "malformed_frame",
+        "frame_limit",
+        "inbound_buffer_limit",
+        "invalid_utf8",
+        "outbound_frame_limit",
+        "outbound_malformed",
+        "outbound_method_forbidden",
+        "outbound_response_forbidden",
+        "websocket_closed",
+        "websocket_connect_failed",
+        "websocket_send_failed",
+        "websocket_transport_error",
+        "observer_runtime_error"
+      ]
+    },
+    "mode": { "const": "local_no_spend_observation_only" },
+    "protocol": {
+      "type": "object",
+      "required": ["name", "package", "pinned_version", "supported_versions", "negotiated_version"],
+      "properties": {
+        "name": { "const": "Agent Host Protocol" },
+        "package": { "const": "@microsoft/agent-host-protocol" },
+        "pinned_version": { "const": "0.8.0" },
+        "supported_versions": {
+          "type": "array",
+          "items": [{ "const": "0.8.0" }],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "negotiated_version": { "type": ["string", "null"], "enum": ["0.8.0", null] }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["transport_kind", "endpoint_scheme", "endpoint_digest"],
+      "properties": {
+        "transport_kind": { "enum": ["loopback_websocket", "injected"] },
+        "endpoint_scheme": { "enum": ["ws", "wss", "injected"] },
+        "endpoint_digest": { "$ref": "#/definitions/digest" }
+      },
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "required": ["channels", "channel_count"],
+      "properties": {
+        "channels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/definitions/channelEvidence" }
+        },
+        "channel_count": { "type": "integer", "minimum": 1, "maximum": 16 }
+      },
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "required": ["duration_ms", "max_events", "max_frame_bytes", "max_artifact_bytes", "request_timeout_ms", "max_channels"],
+      "properties": {
+        "duration_ms": { "type": "integer", "minimum": 25, "maximum": 60000 },
+        "max_events": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "max_frame_bytes": { "type": "integer", "minimum": 256, "maximum": 1048576 },
+        "max_artifact_bytes": { "type": "integer", "minimum": 81920, "maximum": 8388608 },
+        "request_timeout_ms": { "type": "integer", "minimum": 25, "maximum": 30000 },
+        "max_channels": { "const": 16 }
+      },
+      "additionalProperties": false
+    },
+    "counts": {
+      "type": "object",
+      "required": [
+        "persisted_events",
+        "snapshots",
+        "unique_actions",
+        "duplicates",
+        "notifications",
+        "server_requests_default_rejection_selected",
+        "redactions",
+        "discarded_otlp_notifications",
+        "discarded_unknown_notifications",
+        "sequence_gaps_observed",
+        "sequence_collisions_observed",
+        "out_of_order_observed",
+        "client_sequence_regressions_observed",
+        "by_channel",
+        "by_event_type",
+        "event_type_counts_truncated"
+      ],
+      "properties": {
+        "persisted_events": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "snapshots": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "unique_actions": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "duplicates": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "notifications": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "server_requests_default_rejection_selected": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "redactions": { "type": "integer", "minimum": 0 },
+        "discarded_otlp_notifications": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "discarded_unknown_notifications": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "sequence_gaps_observed": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "sequence_collisions_observed": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "out_of_order_observed": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "client_sequence_regressions_observed": { "type": "integer", "minimum": 0, "maximum": 1000 },
+        "by_channel": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": ["scheme", "ref_digest", "snapshots", "actions", "notifications", "server_requests", "total"],
+            "properties": {
+              "scheme": { "enum": ["ahp-root", "ahp-session", "ahp-chat"] },
+              "ref_digest": { "$ref": "#/definitions/digest" },
+              "snapshots": { "type": "integer", "minimum": 0, "maximum": 1000 },
+              "actions": { "type": "integer", "minimum": 0, "maximum": 1000 },
+              "notifications": { "type": "integer", "minimum": 0, "maximum": 1000 },
+              "server_requests": { "type": "integer", "minimum": 0, "maximum": 1000 },
+              "total": { "type": "integer", "minimum": 0, "maximum": 1000 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "by_event_type": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": ["kind", "event_type", "count"],
+            "properties": {
+              "kind": { "enum": ["snapshot", "action", "notification", "server_request"] },
+              "event_type": { "type": "string", "pattern": "^[A-Za-z0-9_/-]{1,96}$" },
+              "count": { "type": "integer", "minimum": 1, "maximum": 1000 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "event_type_counts_truncated": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "sequence": {
+      "type": "object",
+      "required": ["initialize_server_seq", "first_observed_action_seq", "last_observed_action_seq", "observed_discontinuities", "loss_proven", "receipt_claimed"],
+      "properties": {
+        "initialize_server_seq": { "$ref": "#/definitions/nullableSequence" },
+        "first_observed_action_seq": { "$ref": "#/definitions/nullableSequence" },
+        "last_observed_action_seq": { "$ref": "#/definitions/nullableSequence" },
+        "observed_discontinuities": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "required": ["after", "before", "observed_discontinuity"],
+            "properties": {
+              "after": { "type": "integer", "minimum": 0 },
+              "before": { "type": "integer", "minimum": 0 },
+              "observed_discontinuity": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "loss_proven": { "const": false },
+        "receipt_claimed": { "const": false }
+      },
+      "additionalProperties": false
+    },
+    "warnings": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9_]{1,64}$" }
+    },
+    "source_event_digests": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/digest" }
+    },
+    "source_event_digest_count": { "type": "integer", "minimum": 0, "maximum": 1000 },
+    "source_event_digests_truncated": { "type": "boolean" },
+    "source_event_stream_digest": { "$ref": "#/definitions/digest" },
+    "claims": {
+      "type": "object",
+      "required": ["observer_only", "governed_action_execution", "sequence_is_receipt", "sequence_gap_proves_loss", "telemetry_is_audit_log", "certification_claimed"],
+      "properties": {
+        "observer_only": { "const": true },
+        "governed_action_execution": { "const": false },
+        "sequence_is_receipt": { "const": false },
+        "sequence_gap_proves_loss": { "const": false },
+        "telemetry_is_audit_log": { "const": false },
+        "certification_claimed": { "const": false }
+      },
+      "additionalProperties": false
+    },
+    "authority": { "$ref": "#/definitions/authority" },
+    "output_digest": { "$ref": "#/definitions/digest" }
+  },
+  "definitions": {
+    "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "nullableSequence": { "type": ["integer", "null"], "minimum": 0 },
+    "channelEvidence": {
+      "type": "object",
+      "required": ["scheme", "ref_digest"],
+      "properties": {
+        "scheme": { "enum": ["ahp-root", "ahp-session", "ahp-chat"] },
+        "ref_digest": { "$ref": "#/definitions/digest" }
+      },
+      "additionalProperties": false
+    },
+    "authority": {
+      "type": "object",
+      "required": [
+        "dispatch_action",
+        "create_session",
+        "dispose_session",
+        "create_chat",
+        "terminal_input",
+        "terminal_claim",
+        "resource_write",
+        "resource_delete",
+        "resource_move",
+        "authenticate",
+        "provide_client_tools",
+        "approve_tool_calls",
+        "run_automation",
+        "mutate_automation",
+        "provider_dispatch",
+        "wallet_mutation",
+        "x402_settlement",
+        "marketplace_publication",
+        "trust_mutation",
+        "owner_approval_bypass"
+      ],
+      "properties": {
+        "dispatch_action": { "const": false },
+        "create_session": { "const": false },
+        "dispose_session": { "const": false },
+        "create_chat": { "const": false },
+        "terminal_input": { "const": false },
+        "terminal_claim": { "const": false },
+        "resource_write": { "const": false },
+        "resource_delete": { "const": false },
+        "resource_move": { "const": false },
+        "authenticate": { "const": false },
+        "provide_client_tools": { "const": false },
+        "approve_tool_calls": { "const": false },
+        "run_automation": { "const": false },
+        "mutate_automation": { "const": false },
+        "provider_dispatch": { "const": false },
+        "wallet_mutation": { "const": false },
+        "x402_settlement": { "const": false },
+        "marketplace_publication": { "const": false },
+        "trust_mutation": { "const": false },
+        "owner_approval_bypass": { "const": false }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
