@@ -23,7 +23,13 @@ import {
   observeAhp,
   validateAhpObservationConfig,
 } from '../src/adapters/ahp-observer.mjs';
-import { sanitizeForPublicEvidence, sanitizeText, stableHash } from '../src/kernel/events.mjs';
+import {
+  createHarnessEvent,
+  sanitizeForPublicEvidence,
+  sanitizeText,
+  stableHash,
+} from '../src/kernel/events.mjs';
+import { probeRuntime } from '../src/kernel/runtime-probe.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIXED_TIME = '2026-08-22T12:34:56.000Z';
@@ -115,7 +121,7 @@ function sensitiveShape() {
   };
 }
 
-test('public sanitizers fail closed for arbitrary digest-shaped text and preserve only allowlisted evidence fields', () => {
+test('public sanitizers fail closed for attacker-named digest fields, nesting, and arrays', () => {
   const literalPlaceholder = '__SAFE_SHA256_0__';
   const uppercaseDigest = `SHA256:${'ABCDEF0123456789'.repeat(4)}`;
   const lowercaseDigest = uppercaseDigest.toLowerCase();
@@ -137,13 +143,18 @@ test('public sanitizers fail closed for arbitrary digest-shaped text and preserv
     path: uppercaseDigest,
     event: uppercaseDigest,
     bearer_note: bearerSecret,
-    evidence: {
+    attacker: {
+      sha256: uppercaseDigest,
       source_event_digest: uppercaseDigest,
       origin_client_digest: uppercaseDigest,
       channel: { ref_digest: uppercaseDigest },
       references: { session_ref_digest: uppercaseDigest },
+      source_event_digests: [
+        uppercaseDigest,
+        { source_event_digest: uppercaseDigest },
+      ],
+      forged_reference: { value: uppercaseDigest },
     },
-    source_event_digests: [uppercaseDigest],
   };
   const sanitized = sanitizeForPublicEvidence(candidate);
   assert.deepEqual(sanitized, {
@@ -155,15 +166,66 @@ test('public sanitizers fail closed for arbitrary digest-shaped text and preserv
     path: redactedDigest,
     event: redactedDigest,
     bearer_note: 'Bearer [REDACTED]',
-    evidence: {
-      source_event_digest: lowercaseDigest,
-      origin_client_digest: lowercaseDigest,
-      channel: { ref_digest: lowercaseDigest },
-      references: { session_ref_digest: lowercaseDigest },
+    attacker: {
+      sha256: redactedDigest,
+      source_event_digest: redactedDigest,
+      origin_client_digest: redactedDigest,
+      channel: { ref_digest: redactedDigest },
+      references: { session_ref_digest: redactedDigest },
+      source_event_digests: [
+        redactedDigest,
+        { source_event_digest: redactedDigest },
+      ],
+      forged_reference: { value: redactedDigest },
     },
-    source_event_digests: [lowercaseDigest],
   });
   assert.deepEqual(sanitizeForPublicEvidence(candidate), sanitized);
+  const event = createHarnessEvent({
+    run_id: 'run_untrusted_digest_regression',
+    type: 'adapter_observation',
+    summary: 'Untrusted digest regression',
+    data: candidate,
+    created_at: FIXED_TIME,
+  });
+  assert.deepEqual(event.data, sanitized);
+});
+
+test('runtime probe fetched JSON cannot forge trusted digest provenance', async (t) => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'runtime-probe-digest-test-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const uppercaseDigest = `SHA256:${'ABCDEF0123456789'.repeat(4)}`;
+  const redactedDigest = 'SHA256:[REDACTED_LONG_TOKEN]';
+  const payload = {
+    attacker: {
+      sha256: uppercaseDigest,
+      source_event_digest: uppercaseDigest,
+      source_event_digests: [uppercaseDigest, { ref_digest: uppercaseDigest }],
+    },
+  };
+  const fetchImpl = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    text: async () => JSON.stringify(payload),
+  });
+  const result = await probeRuntime({
+    dir: temp,
+    url: 'http://127.0.0.1:4319',
+    fetchImpl,
+  });
+  assert.equal(result.artifact.status, 'passed');
+  assert.equal(result.artifact.endpoints.length, 5);
+  for (const endpoint of result.artifact.endpoints) {
+    assert.match(endpoint.body_hash, /^sha256:[a-f0-9]{64}$/);
+    assert.deepEqual(endpoint.body, {
+      attacker: {
+        sha256: redactedDigest,
+        source_event_digest: redactedDigest,
+        source_event_digests: [redactedDigest, { ref_digest: redactedDigest }],
+      },
+    });
+  }
+  assert.equal(JSON.stringify(result.artifact).includes(uppercaseDigest), false);
 });
 
 function scriptedServer(server, {
@@ -444,7 +506,15 @@ test('official in-memory transport observes root/session/chat snapshots and boun
 
   assert.equal(run.result.status, 'completed');
   assert.equal(run.result.termination_reason, 'transport_closed');
+  const redactedDigest = 'sha256:[REDACTED_LONG_TOKEN]';
+  assert.equal(run.artifacts.state.project_paths.endpoint_digest, redactedDigest);
+  const startedLifecycle = run.artifacts.events.find((event) => (
+    event.data?.observation_kind === 'lifecycle' && event.data?.phase === 'started'
+  ));
+  assert.equal(startedLifecycle.data.endpoint_digest, redactedDigest);
   assert.equal(run.artifacts.summary.protocol.negotiated_version, '0.8.0');
+  assert.match(run.artifacts.summary.source.endpoint_digest, /^sha256:[a-f0-9]{64}$/);
+  assert.ok(run.artifacts.summary.scope.channels.every((entry) => /^sha256:[a-f0-9]{64}$/.test(entry.ref_digest)));
   assert.equal(run.artifacts.summary.counts.snapshots, 3);
   assert.equal(run.artifacts.summary.counts.unique_actions, 4);
   assert.equal(run.artifacts.summary.counts.duplicates, 1);
@@ -465,21 +535,22 @@ test('official in-memory transport observes root/session/chat snapshots and boun
 
   const actionEvidence = eventEvidence(run.artifacts, 'action');
   assert.equal(actionEvidence.length, 5);
-  assert.equal(actionEvidence[0].source_event_digest, actionEvidence[1].source_event_digest);
+  assert.equal(actionEvidence[0].source_event_digest, redactedDigest);
+  assert.equal(actionEvidence[1].source_event_digest, redactedDigest);
   assert.equal(actionEvidence[0].sequence_classification, 'accepted');
   assert.equal(actionEvidence[1].sequence_classification, 'duplicate');
   assert.deepEqual(actionEvidence.map((entry) => entry.sequence_classification), [
     'accepted', 'duplicate', 'gap_observed', 'collision', 'out_of_order',
   ]);
   assert.equal(actionEvidence[0].origin, 'client');
-  assert.match(actionEvidence[0].origin_client_digest, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(actionEvidence[0].origin_client_digest, redactedDigest);
   assert.equal(actionEvidence[0].origin_client_seq, 7);
   assert.equal(actionEvidence[0].status, 'running');
   assert.equal(actionEvidence[0].rejection_reason_present, true);
   assert.ok(Object.values(actionEvidence[0].redactions).every((count) => count > 0));
   assert.ok(actionEvidence[0].redactions.tool_input > 0);
   assert.ok(actionEvidence[0].redactions.tool_result_content > 0);
-  assert.match(actionEvidence[0].references.session_ref_digest, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(actionEvidence[0].references.session_ref_digest, redactedDigest);
 
   const notifications = eventEvidence(run.artifacts, 'notification');
   assert.deepEqual(notifications.map((entry) => entry.notification_type), [
@@ -516,6 +587,7 @@ test('official in-memory transport observes root/session/chat snapshots and boun
   assert.equal(run.artifacts.summary.source_event_digest_count, 13);
   assert.equal(run.artifacts.summary.source_event_digests.length, 12);
   assert.equal(run.artifacts.summary.source_event_digests_truncated, false);
+  assert.ok(run.artifacts.summary.source_event_digests.every((digest) => /^sha256:[a-f0-9]{64}$/.test(digest)));
   assert.equal(run.artifacts.summary.counts.event_type_counts_truncated, false);
   assert.match(run.artifacts.summary.source_event_stream_digest, /^sha256:[a-f0-9]{64}$/);
   const perChannel = Object.fromEntries(run.artifacts.summary.counts.by_channel.map((entry) => [entry.scheme, entry]));
@@ -546,12 +618,7 @@ test('official in-memory transport observes root/session/chat snapshots and boun
     .map((event) => event.data?.evidence)
     .filter((evidence) => evidence?.source_event_digest);
   assert.equal(persistedEvidence.length, 13);
-  assert.ok(persistedEvidence.every((evidence) => run.artifacts.summary.source_event_digests.includes(evidence.source_event_digest)));
-  let rollingDigest = stableHash('ahp_observer_event_stream_v1');
-  for (const evidence of persistedEvidence) {
-    rollingDigest = stableHash({ previous: rollingDigest, source_event_digest: evidence.source_event_digest });
-  }
-  assert.equal(run.artifacts.summary.source_event_stream_digest, rollingDigest);
+  assert.ok(persistedEvidence.every((evidence) => evidence.source_event_digest === redactedDigest));
   assert.equal(run.artifacts.state.event_count, run.artifacts.events.length);
   assert.deepEqual(run.artifacts.events.map((event) => event.sequence), Array.from(
     { length: run.artifacts.events.length }, (_, index) => index + 1,
@@ -1368,7 +1435,8 @@ test('same-sequence actions with identical public shape but different private co
   assert.ok(run.artifacts.summary.warnings.includes('sequence_collision_observed'));
   const evidence = eventEvidence(run.artifacts, 'action');
   assert.deepEqual(evidence.map((entry) => entry.sequence_classification), ['accepted', 'collision']);
-  assert.equal(evidence[0].source_event_digest, evidence[1].source_event_digest);
+  assert.equal(evidence[0].source_event_digest, 'sha256:[REDACTED_LONG_TOKEN]');
+  assert.equal(evidence[1].source_event_digest, 'sha256:[REDACTED_LONG_TOKEN]');
   assert.doesNotMatch(run.artifacts.allText, new RegExp(firstCanary));
   assert.doesNotMatch(run.artifacts.allText, new RegExp(secondCanary));
 });
@@ -1722,13 +1790,10 @@ test('source event digests are stable across independent observations', async (t
   const second = await runScenario(t, scenario);
   assert.notEqual(first.result.observation_id, second.result.observation_id);
   assert.deepEqual(
-    eventEvidence(first.artifacts, 'snapshot').map((entry) => entry.source_event_digest),
-    eventEvidence(second.artifacts, 'snapshot').map((entry) => entry.source_event_digest),
+    first.artifacts.summary.source_event_digests,
+    second.artifacts.summary.source_event_digests,
   );
-  assert.deepEqual(
-    eventEvidence(first.artifacts, 'action').map((entry) => entry.source_event_digest),
-    eventEvidence(second.artifacts, 'action').map((entry) => entry.source_event_digest),
-  );
+  assert.equal(first.artifacts.summary.source_event_stream_digest, second.artifacts.summary.source_event_stream_digest);
   assert.equal(first.result.output_digest, second.result.output_digest);
 });
 
@@ -2141,11 +2206,26 @@ test('loopback websocket burst exceeding inbound queue bounds fails closed', asy
 
 test('package exposes the observer and schema while pinning the exact AHP and ws dependencies', async () => {
   const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
+  const [rootModule, eventsModule] = await Promise.all([
+    import('agoragentic-harness-core'),
+    import('agoragentic-harness-core/kernel/events'),
+  ]);
   assert.equal(pkg.engines.node, '>=18.0.0');
   assert.equal(pkg.dependencies['@microsoft/agent-host-protocol'], '0.8.0');
   assert.equal(pkg.dependencies.ws, '8.21.3');
   assert.equal(pkg.exports['./adapters/ahp'], './src/adapters/ahp-observer.mjs');
   assert.equal(pkg.exports['./schema/ahp-observation.v1.json'], './schema/ahp-observation.v1.json');
+  assert.equal(pkg.exports['./internal/trusted-sha256-reference'], undefined);
+  assert.equal(Object.hasOwn(rootModule, 'createTrustedSha256Reference'), false);
+  assert.equal(Object.hasOwn(eventsModule, 'createTrustedSha256Reference'), false);
+  await assert.rejects(
+    import('agoragentic-harness-core/internal/trusted-sha256-reference'),
+    (error) => error?.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED',
+  );
+  await assert.rejects(
+    import(new URL('../src/internal/trusted-sha256-reference.mjs', import.meta.url)),
+    (error) => error?.code === 'ERR_MODULE_NOT_FOUND',
+  );
   assert.ok(pkg.files.includes('AHP_ADAPTER.md'));
   assert.match(pkg.scripts.test, /ahp-observer\.test\.mjs/);
 });
