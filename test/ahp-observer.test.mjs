@@ -323,8 +323,8 @@ async function runScenario(t, scenario = {}, config = {}) {
     dir: temp,
     transport: client,
     channels,
-    duration_ms: 500,
-    request_timeout_ms: 100,
+    // Generic scenarios exercise protocol outcomes, not scheduler timing. Use
+    // the production defaults; deadline-specific tests pass explicit limits.
     now: () => FIXED_TIME,
     ...config,
   });
