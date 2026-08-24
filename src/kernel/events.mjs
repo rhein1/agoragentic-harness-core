@@ -32,6 +32,43 @@ const SECRET_TEXT_PATTERNS = [
   [/\b[A-Za-z0-9+/=]{40,}\b/g, '[REDACTED_LONG_TOKEN]'],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[REDACTED_PRIVATE_KEY]'],
 ];
+const SHA256_REFERENCE_PATTERN = /^sha256:[a-f0-9]{64}$/i;
+// A digest-shaped string is still untrusted text unless its structural field is
+// one of these audited public evidence references. Keep this list exact: a
+// suffix match would let arbitrary note, reason, task, or path values opt out.
+const PUBLIC_SHA256_REFERENCE_FIELDS = new Set([
+  'body_hash',
+  'chat_ref_digest',
+  'endpoint_digest',
+  'evaluation_evidence_hash',
+  'evaluation_evidence_hashes',
+  'evidence_hash',
+  'evidence_reference_hash',
+  'input_hash',
+  'location_hash',
+  'manifest_digest',
+  'memory_project_hash',
+  'message_hash',
+  'method_digest',
+  'observation_digest',
+  'origin_client_digest',
+  'output_digest',
+  'path_ref_hash',
+  'policy_snapshot_hash',
+  'ref_digest',
+  'selected_memory_claims_hash',
+  'session_ref_digest',
+  'sha256',
+  'snapshot_hash',
+  'source_event_digest',
+  'source_event_digests',
+  'source_event_stream_digest',
+  'source_ref_hash',
+  'summary_digest',
+  'terminal_ref_digest',
+  'tool_call_ref_digest',
+  'turn_ref_digest',
+]);
 
 export function authorityBoundary(extra = {}) {
   return {
@@ -91,6 +128,7 @@ export function sanitizeForPublicEvidence(value, options = {}) {
     maxDepth: options.maxDepth ?? 8,
     maxArrayLength: options.maxArrayLength ?? 50,
     maxStringLength: options.maxStringLength ?? 480,
+    field: null,
     seen,
   });
 }
@@ -98,12 +136,8 @@ export function sanitizeForPublicEvidence(value, options = {}) {
 export function sanitizeText(value, options = {}) {
   const maxLength = options.maxLength ?? 480;
   let text = String(value ?? '');
-  if (/^sha256:[a-f0-9]{64}$/i.test(text)) {
-    text = text.toLowerCase();
-  } else {
-    for (const [pattern, replacement] of SECRET_TEXT_PATTERNS) {
-      text = text.replace(pattern, replacement);
-    }
+  for (const [pattern, replacement] of SECRET_TEXT_PATTERNS) {
+    text = text.replace(pattern, replacement);
   }
   if (text.length > maxLength) return `${text.slice(0, maxLength)}...[truncated]`;
   return text;
@@ -127,7 +161,12 @@ export function isPlainObject(value) {
 
 function sanitizeValue(value, context) {
   if (value === null || value === undefined) return value;
-  if (typeof value === 'string') return sanitizeText(value, { maxLength: context.maxStringLength });
+  if (typeof value === 'string') {
+    if (PUBLIC_SHA256_REFERENCE_FIELDS.has(context.field) && SHA256_REFERENCE_PATTERN.test(value)) {
+      return value.toLowerCase();
+    }
+    return sanitizeText(value, { maxLength: context.maxStringLength });
+  }
   if (typeof value === 'number' || typeof value === 'boolean') return value;
   if (typeof value === 'bigint') return String(value);
   if (typeof value !== 'object') return '[REDACTED_UNSUPPORTED_VALUE]';
@@ -152,6 +191,7 @@ function sanitizeValue(value, context) {
     }
     output[key] = sanitizeValue(child, {
       ...context,
+      field: key,
       maxDepth: context.maxDepth - 1,
     });
   }

@@ -8,8 +8,9 @@ secret exposure, or unsafe authority widening.
 
 | Version | Status |
 |---|---|
-| `0.3.x` | Review-gated source candidate until a release is published |
-| `0.2.x` | Current npm release line |
+| `0.4.x` | Review-gated source candidate; not yet published |
+| `0.3.x` | Current published npm release line |
+| `0.2.x` | Previous published release line |
 | `<0.2` | Unsupported |
 
 ## Scope

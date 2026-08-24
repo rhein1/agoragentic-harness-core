@@ -115,22 +115,55 @@ function sensitiveShape() {
   };
 }
 
-test('public sanitizers preserve literal placeholder text and real evidence digests without leaking secrets', () => {
+test('public sanitizers fail closed for arbitrary digest-shaped text and preserve only allowlisted evidence fields', () => {
   const literalPlaceholder = '__SAFE_SHA256_0__';
   const uppercaseDigest = `SHA256:${'ABCDEF0123456789'.repeat(4)}`;
   const lowercaseDigest = uppercaseDigest.toLowerCase();
+  const redactedDigest = 'SHA256:[REDACTED_LONG_TOKEN]';
   const bearerSecret = 'Bearer SANITIZER-CANARY-123456789';
   const compositeDigest = `Authorization: Bearer ${lowercaseDigest}`;
 
   assert.equal(sanitizeText(literalPlaceholder), literalPlaceholder);
-  assert.equal(sanitizeText(uppercaseDigest), lowercaseDigest);
+  assert.equal(sanitizeText(uppercaseDigest), redactedDigest);
   assert.equal(sanitizeText(bearerSecret), 'Bearer [REDACTED]');
   assert.equal(sanitizeText(compositeDigest), 'Authorization: Bearer sha256:[REDACTED_LONG_TOKEN]');
-  assert.deepEqual(sanitizeForPublicEvidence({ literalPlaceholder, digest: uppercaseDigest, note: bearerSecret }), {
+
+  const candidate = {
     literalPlaceholder,
-    digest: lowercaseDigest,
-    note: 'Bearer [REDACTED]',
+    digest: uppercaseDigest,
+    note: uppercaseDigest,
+    reason: uppercaseDigest,
+    task: uppercaseDigest,
+    path: uppercaseDigest,
+    event: uppercaseDigest,
+    bearer_note: bearerSecret,
+    evidence: {
+      source_event_digest: uppercaseDigest,
+      origin_client_digest: uppercaseDigest,
+      channel: { ref_digest: uppercaseDigest },
+      references: { session_ref_digest: uppercaseDigest },
+    },
+    source_event_digests: [uppercaseDigest],
+  };
+  const sanitized = sanitizeForPublicEvidence(candidate);
+  assert.deepEqual(sanitized, {
+    literalPlaceholder,
+    digest: redactedDigest,
+    note: redactedDigest,
+    reason: redactedDigest,
+    task: redactedDigest,
+    path: redactedDigest,
+    event: redactedDigest,
+    bearer_note: 'Bearer [REDACTED]',
+    evidence: {
+      source_event_digest: lowercaseDigest,
+      origin_client_digest: lowercaseDigest,
+      channel: { ref_digest: lowercaseDigest },
+      references: { session_ref_digest: lowercaseDigest },
+    },
+    source_event_digests: [lowercaseDigest],
   });
+  assert.deepEqual(sanitizeForPublicEvidence(candidate), sanitized);
 });
 
 function scriptedServer(server, {
