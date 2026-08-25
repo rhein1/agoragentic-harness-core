@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.1 - 2026-08-24
+
 - Attempt to release negotiated or attempted AHP observer subscriptions in reverse order before transport close, with bounded send tracking and warning-only evidence when cleanup cannot complete.
 
 ## 0.4.0 - 2026-08-24
