@@ -4,9 +4,7 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: read
-  id-token: write
+permissions: {}
 
 env:
   AGORAGENTIC_NO_SPEND: 1
@@ -14,22 +12,64 @@ env:
   AGORAGENTIC_ALLOW_NETWORK_CANARIES: 0
 
 jobs:
-  publish:
-    if: startsWith(github.event.release.tag_name, 'v')
+  verify:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      tag_commit: ${{ steps.guard.outputs.tag_commit }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+      - name: Verify exact release event checkout
+        env:
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          expected="v${version}"
+          test "${GITHUB_REF_TYPE}" = "tag"
+          test "${GITHUB_REF_NAME}" = "${RELEASE_TAG_NAME}"
+          test "${RELEASE_TAG_NAME}" = "${expected}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+      - name: Verify protected-main release target and exact CI
+        id: guard
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          node scripts/verify-release-target.mjs
+          echo "tag_commit=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.verify.outputs.tag_commit }}
+          persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-      - name: Verify exact release tag
+      - name: Recheck validated release commit
+        env:
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          VALIDATED_TAG_COMMIT: ${{ needs.verify.outputs.tag_commit }}
         run: |
           version="$(node -p "require('./package.json').version")"
           expected="v${version}"
-          test "${GITHUB_REF_NAME}" = "${expected}"
+          test "${RELEASE_TAG_NAME}" = "${expected}"
+          test "$(git rev-parse HEAD)" = "${VALIDATED_TAG_COMMIT}"
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - run: node examples/frameworks/validate.mjs
