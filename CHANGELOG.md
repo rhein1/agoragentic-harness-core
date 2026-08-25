@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hardened trusted publishing so a version-matched release tag must belong to protected `main` and have successful exact-SHA Node.js 18, 20, 22, and 24 CI before npm publication.
+
 ## 0.4.1 - 2026-08-24
 
 - Attempt to release negotiated or attempted AHP observer subscriptions in reverse order before transport close, with bounded send tracking and warning-only evidence when cleanup cannot complete.
