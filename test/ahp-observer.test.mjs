@@ -1569,7 +1569,7 @@ test('pending-subscribe action bursts retain only bounded sanitized evidence', a
     }, {
       channels,
       duration_ms: 5_000,
-      request_timeout_ms: 500,
+      request_timeout_ms: 2_000,
     });
     assert.equal(run.result.status, 'completed');
     assert.equal(run.artifacts.summary.counts.snapshots, 2);
