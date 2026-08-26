@@ -310,7 +310,7 @@ export function buildAgentOsExport(project, options = {}) {
     generated_at: generatedAt,
     generated_from: {
       source: 'agoragentic-harness-core',
-      package_version: '0.4.1',
+      package_version: '0.4.2',
       local_only: true,
     },
     schema_artifacts: {

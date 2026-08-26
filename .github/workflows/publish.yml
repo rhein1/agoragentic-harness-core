@@ -1,8 +1,13 @@
 name: Publish Harness Core
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
 
 permissions: {}
 
@@ -27,9 +32,9 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
-      - name: Verify exact release event checkout
+      - name: Verify exact release tag checkout
         env:
-          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_TAG_NAME: ${{ github.ref_name }}
         run: |
           version="$(node -p "require('./package.json').version")"
           expected="v${version}"
@@ -41,7 +46,7 @@ jobs:
         id: guard
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_TAG_NAME: ${{ github.ref_name }}
         run: |
           node scripts/verify-release-target.mjs
           echo "tag_commit=${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
@@ -49,6 +54,8 @@ jobs:
   publish:
     needs: verify
     runs-on: ubuntu-latest
+    environment:
+      name: npm-publish
     permissions:
       contents: read
       id-token: write
@@ -61,15 +68,20 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - name: Recheck validated release commit
         env:
-          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_TAG_NAME: ${{ github.ref_name }}
           VALIDATED_TAG_COMMIT: ${{ needs.verify.outputs.tag_commit }}
         run: |
           version="$(node -p "require('./package.json').version")"
           expected="v${version}"
           test "${RELEASE_TAG_NAME}" = "${expected}"
           test "$(git rev-parse HEAD)" = "${VALIDATED_TAG_COMMIT}"
+      - name: Record release toolchain
+        run: |
+          node --version
+          npm --version
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - run: node examples/frameworks/validate.mjs

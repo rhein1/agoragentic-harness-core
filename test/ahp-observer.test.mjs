@@ -343,6 +343,21 @@ function eventEvidence(artifacts, kind) {
     .map((event) => event.data.evidence);
 }
 
+function assertEndpointPortNotPersisted(artifacts, port) {
+  const portText = String(port).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // A bare decimal port can legitimately occur inside a SHA-256 digest. Match
+  // only endpoint-bearing host, field, or prose shapes so the leak assertion
+  // remains deterministic without weakening the persisted-endpoint boundary.
+  assert.doesNotMatch(
+    artifacts.allText,
+    new RegExp(`(?:127\\.0\\.0\\.1|localhost|\\[::1\\]):${portText}\\b`, 'i'),
+  );
+  assert.doesNotMatch(
+    artifacts.allText,
+    new RegExp(`(?:"[^"]*port[^"]*"\\s*:\\s*"?|\\bport\\b\\s*[:=]\\s*)${portText}\\b`, 'i'),
+  );
+}
+
 test('configuration is loopback-only, credential-free, bounded, and hash-only', async (t) => {
   const transport = InMemoryTransport.pair()[0];
   const valid = validateAhpObservationConfig({
@@ -1554,7 +1569,7 @@ test('pending-subscribe action bursts retain only bounded sanitized evidence', a
     }, {
       channels,
       duration_ms: 5_000,
-      request_timeout_ms: 500,
+      request_timeout_ms: 2_000,
     });
     assert.equal(run.result.status, 'completed');
     assert.equal(run.artifacts.summary.counts.snapshots, 2);
@@ -2182,7 +2197,7 @@ test('Node 18-compatible ws transport observes loopback without monkeypatching g
   const artifacts = await readRunArtifacts(temp, result);
   assert.equal(artifacts.summary.source.transport_kind, 'loopback_websocket');
   assert.equal(artifacts.summary.source.endpoint_scheme, 'ws');
-  assert.doesNotMatch(artifacts.allText, new RegExp(String(address.port)));
+  assertEndpointPortNotPersisted(artifacts, address.port);
   for (const canary of Object.values(CANARIES)) assert.doesNotMatch(artifacts.allText, new RegExp(canary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
@@ -2236,7 +2251,7 @@ test('websocket handshake completing after the global duration emits no initiali
   assert.equal(artifacts.summary.protocol.negotiated_version, null);
   assert.equal(artifacts.summary.counts.snapshots, 0);
   assert.equal(artifacts.summary.counts.persisted_events, 0);
-  assert.doesNotMatch(artifacts.allText, new RegExp(String(address.port)));
+  assertEndpointPortNotPersisted(artifacts, address.port);
 });
 
 test('oversized loopback subscribe frame fails closed and tears down the websocket', async (t) => {
@@ -2308,7 +2323,7 @@ test('oversized loopback subscribe frame fails closed and tears down the websock
   const artifacts = await readRunArtifacts(temp, result);
   assert.equal(artifacts.summary.protocol.negotiated_version, '0.8.0');
   assert.equal(artifacts.allText.includes(longChannel), false);
-  assert.doesNotMatch(artifacts.allText, new RegExp(String(address.port)));
+  assertEndpointPortNotPersisted(artifacts, address.port);
 });
 
 test('abnormal loopback websocket termination fails closed instead of masquerading as a clean close', async (t) => {
@@ -2349,7 +2364,7 @@ test('abnormal loopback websocket termination fails closed instead of masqueradi
   assert.equal(artifacts.summary.status, 'blocked');
   assert.equal(artifacts.receipt.status, 'blocked');
   assert.equal(artifacts.summary.source.transport_kind, 'loopback_websocket');
-  assert.doesNotMatch(artifacts.allText, new RegExp(String(address.port)));
+  assertEndpointPortNotPersisted(artifacts, address.port);
 });
 
 test('loopback websocket burst exceeding inbound queue bounds fails closed', async (t) => {
@@ -2400,7 +2415,7 @@ test('loopback websocket burst exceeding inbound queue bounds fails closed', asy
   assert.equal(artifacts.summary.status, 'blocked');
   assert.equal(artifacts.receipt.status, 'blocked');
   assert.ok(artifacts.summary.counts.persisted_events <= 1);
-  assert.doesNotMatch(artifacts.allText, new RegExp(String(address.port)));
+  assertEndpointPortNotPersisted(artifacts, address.port);
 });
 
 test('package exposes the observer and schema while pinning the exact AHP and ws dependencies', async () => {

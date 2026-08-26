@@ -53,7 +53,7 @@ export function validateReleaseInputs({
     throw new Error('GITHUB_SHA must be a full 40-character Git commit SHA.');
   }
   if (normalizedEventCommit !== normalizedCommit) {
-    throw new Error('Checked-out release tag commit must equal the release-event GITHUB_SHA.');
+    throw new Error('Checked-out release tag commit must equal the tag-push GITHUB_SHA.');
   }
 
   return {
@@ -80,18 +80,7 @@ export async function verifyReleaseTarget(input, options = {}) {
     requestJson,
   });
   if (resolvedTagCommit !== release.tag_commit) {
-    throw new Error('Release tag ref must resolve to the release-event commit.');
-  }
-
-  const publishedRelease = await requestJson(
-    `/repos/${release.repository}/releases/tags/${encodedTag}`,
-  );
-  if (
-    publishedRelease?.tag_name !== release.tag_name
-    || publishedRelease?.draft !== false
-    || !publishedRelease?.published_at
-  ) {
-    throw new Error('Release tag must have a published, non-draft GitHub release.');
+    throw new Error('Release tag ref must resolve to the tag-push commit.');
   }
 
   const repository = await requestJson(`/repos/${release.repository}`);
@@ -111,16 +100,8 @@ export async function verifyReleaseTarget(input, options = {}) {
     throw new Error(`Protected branch ${RELEASE_BRANCH} did not return a full commit SHA.`);
   }
 
-  const comparison = await requestJson(
-    `/repos/${release.repository}/compare/${release.tag_commit}...${mainCommit}`,
-  );
-  const allowedStatuses = new Set(['ahead', 'identical']);
-  if (
-    comparison?.base_commit?.sha !== release.tag_commit
-    || comparison?.merge_base_commit?.sha !== release.tag_commit
-    || !allowedStatuses.has(comparison?.status)
-  ) {
-    throw new Error(`Release tag commit is not an ancestor of protected ${RELEASE_BRANCH}.`);
+  if (mainCommit !== release.tag_commit) {
+    throw new Error(`Release tag commit must equal the current protected ${RELEASE_BRANCH} head.`);
   }
 
   const workflow = await requestJson(
@@ -269,16 +250,28 @@ export async function requestGitHubJson(apiPath, {
   }
 }
 
-export async function runReleaseVerificationFromEnvironment(env = process.env) {
-  if (env.GITHUB_EVENT_NAME !== 'release') {
-    throw new Error('Release verification must run from a GitHub release event.');
+export function validateReleaseEnvironment(env = {}) {
+  if (env.GITHUB_EVENT_NAME !== 'push') {
+    throw new Error('Release verification must run from a GitHub tag-push event.');
   }
-  if (env.GITHUB_REF_TYPE && env.GITHUB_REF_TYPE !== 'tag') {
+  if (env.GITHUB_REF_TYPE !== 'tag') {
     throw new Error('Release verification requires a tag ref.');
   }
   if (env.RELEASE_TAG_NAME !== env.GITHUB_REF_NAME) {
-    throw new Error('Release payload tag must equal GITHUB_REF_NAME.');
+    throw new Error('Release tag name must equal GITHUB_REF_NAME.');
   }
+  if (env.GITHUB_REF !== `refs/tags/${env.GITHUB_REF_NAME}`) {
+    throw new Error('GITHUB_REF must exactly identify the release tag.');
+  }
+
+  return {
+    tag_name: env.GITHUB_REF_NAME,
+    ref: env.GITHUB_REF,
+  };
+}
+
+export async function runReleaseVerificationFromEnvironment(env = process.env) {
+  validateReleaseEnvironment(env);
 
   const packageJson = JSON.parse(
     readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'),
