@@ -8,6 +8,7 @@ import {
   CI_WORKFLOW_PATH,
   REQUIRED_CI_JOBS,
   requestGitHubJson,
+  validateReleaseEnvironment,
   verifyReleaseTarget,
 } from '../scripts/verify-release-target.mjs';
 
@@ -19,10 +20,10 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 function validInput(overrides = {}) {
   return {
     repository: 'rhein1/agoragentic-harness-core',
-    tagName: 'v0.4.1',
+    tagName: 'v0.4.2',
     tagCommit: TAG_COMMIT,
     eventCommit: TAG_COMMIT,
-    packageVersion: '0.4.1',
+    packageVersion: '0.4.2',
     ...overrides,
   };
 }
@@ -40,28 +41,17 @@ function passingJobs() {
 function githubFixture(overrides = {}) {
   const calls = [];
   const tagRef = overrides.tagRef || {
-    ref: 'refs/tags/v0.4.1',
+    ref: 'refs/tags/v0.4.2',
     object: { type: 'commit', sha: TAG_COMMIT },
   };
   const annotatedTag = overrides.annotatedTag || {
     object: { type: 'commit', sha: TAG_COMMIT },
   };
-  const publishedRelease = overrides.publishedRelease || {
-    tag_name: 'v0.4.1',
-    draft: false,
-    prerelease: false,
-    published_at: '2026-08-25T00:00:00Z',
-  };
   const repository = overrides.repository || { default_branch: 'main' };
   const branch = overrides.branch || {
     name: 'main',
     protected: true,
-    commit: { sha: MAIN_COMMIT },
-  };
-  const comparison = overrides.comparison || {
-    status: 'ahead',
-    base_commit: { sha: TAG_COMMIT },
-    merge_base_commit: { sha: TAG_COMMIT },
+    commit: { sha: TAG_COMMIT },
   };
   const workflowRuns = overrides.workflowRuns || [{
     id: 101,
@@ -88,10 +78,8 @@ function githubFixture(overrides = {}) {
       const url = new URL(apiPath, 'https://api.github.test');
       if (url.pathname.includes('/git/ref/tags/')) return tagRef;
       if (url.pathname.includes('/git/tags/')) return annotatedTag;
-      if (url.pathname.includes('/releases/tags/')) return publishedRelease;
       if (url.pathname === '/repos/rhein1/agoragentic-harness-core') return repository;
       if (url.pathname.endsWith('/branches/main')) return branch;
-      if (url.pathname.includes('/compare/')) return comparison;
       if (url.pathname.endsWith('/actions/workflows/ci.yml/runs')) {
         return { total_count: workflowRuns.length, workflow_runs: workflowRuns };
       }
@@ -104,13 +92,13 @@ function githubFixture(overrides = {}) {
   };
 }
 
-test('release verifier accepts a protected-main ancestor with exact successful matrix CI', async () => {
+test('release verifier accepts the protected-main head with exact successful matrix CI', async () => {
   const fixture = githubFixture();
   const result = await verifyReleaseTarget(validInput(), fixture);
 
   assert.equal(result.ok, true);
   assert.equal(result.tag_commit, TAG_COMMIT);
-  assert.equal(result.protected_branch_commit, MAIN_COMMIT);
+  assert.equal(result.protected_branch_commit, TAG_COMMIT);
   assert.equal(result.ci_run_id, 101);
   assert.deepEqual(result.verified_jobs, REQUIRED_CI_JOBS);
 
@@ -125,18 +113,18 @@ test('release verifier accepts a protected-main ancestor with exact successful m
 test('release verifier rejects a tag that does not exactly match package.json', async () => {
   let called = false;
   await assert.rejects(
-    verifyReleaseTarget(validInput({ tagName: 'v0.4.2' }), {
+    verifyReleaseTarget(validInput({ tagName: 'v0.4.3' }), {
       requestJson: async () => {
         called = true;
         return {};
       },
     }),
-    /Release tag must equal v0\.4\.1/,
+    /Release tag must equal v0\.4\.2/,
   );
   assert.equal(called, false);
 });
 
-test('release verifier rejects a checkout that differs from the release-event SHA', async () => {
+test('release verifier rejects a checkout that differs from the tag-push SHA', async () => {
   let called = false;
   await assert.rejects(
     verifyReleaseTarget(validInput({ eventCommit: MAIN_COMMIT }), {
@@ -145,7 +133,7 @@ test('release verifier rejects a checkout that differs from the release-event SH
         return {};
       },
     }),
-    /must equal the release-event GITHUB_SHA/,
+    /must equal the tag-push GITHUB_SHA/,
   );
   assert.equal(called, false);
 });
@@ -153,20 +141,20 @@ test('release verifier rejects a checkout that differs from the release-event SH
 test('release verifier rejects a moved tag ref', async () => {
   const fixture = githubFixture({
     tagRef: {
-      ref: 'refs/tags/v0.4.1',
+      ref: 'refs/tags/v0.4.2',
       object: { type: 'commit', sha: MAIN_COMMIT },
     },
   });
   await assert.rejects(
     verifyReleaseTarget(validInput(), fixture),
-    /must resolve to the release-event commit/,
+    /must resolve to the tag-push commit/,
   );
 });
 
-test('release verifier peels an annotated tag to the release-event commit', async () => {
+test('release verifier peels an annotated tag to the tag-push commit', async () => {
   const fixture = githubFixture({
     tagRef: {
-      ref: 'refs/tags/v0.4.1',
+      ref: 'refs/tags/v0.4.2',
       object: { type: 'tag', sha: ANNOTATED_TAG_SHA },
     },
   });
@@ -177,18 +165,7 @@ test('release verifier peels an annotated tag to the release-event commit', asyn
   );
 });
 
-test('release verifier rejects a draft release or non-main default branch', async () => {
-  await assert.rejects(
-    verifyReleaseTarget(validInput(), githubFixture({
-      publishedRelease: {
-        tag_name: 'v0.4.1',
-        draft: true,
-        published_at: null,
-      },
-    })),
-    /must have a published, non-draft GitHub release/,
-  );
-
+test('release verifier rejects a non-main default branch', async () => {
   await assert.rejects(
     verifyReleaseTarget(validInput(), githubFixture({
       repository: { default_branch: 'trunk' },
@@ -207,31 +184,14 @@ test('release verifier rejects an unprotected main branch', async () => {
   );
 });
 
-test('release verifier rejects a tag commit outside protected main history', async () => {
+test('release verifier rejects a tag commit that is not the protected main head', async () => {
   const fixture = githubFixture({
-    comparison: {
-      status: 'diverged',
-      base_commit: { sha: TAG_COMMIT },
-      merge_base_commit: { sha: 'c'.repeat(40) },
-    },
+    branch: { name: 'main', protected: true, commit: { sha: MAIN_COMMIT } },
   });
   await assert.rejects(
     verifyReleaseTarget(validInput(), fixture),
-    /not an ancestor of protected main/,
+    /must equal the current protected main head/,
   );
-});
-
-test('release verifier accepts a tag identical to the protected main head', async () => {
-  const fixture = githubFixture({
-    branch: { name: 'main', protected: true, commit: { sha: TAG_COMMIT } },
-    comparison: {
-      status: 'identical',
-      base_commit: { sha: TAG_COMMIT },
-      merge_base_commit: { sha: TAG_COMMIT },
-    },
-  });
-  const result = await verifyReleaseTarget(validInput(), fixture);
-  assert.equal(result.protected_branch_commit, TAG_COMMIT);
 });
 
 test('release verifier rejects an inactive or substituted CI workflow', async () => {
@@ -328,6 +288,36 @@ test('release verifier rejects duplicate required job names', async () => {
   );
 });
 
+test('release environment accepts only an exact tag-push ref', () => {
+  const valid = {
+    GITHUB_EVENT_NAME: 'push',
+    GITHUB_REF_TYPE: 'tag',
+    GITHUB_REF_NAME: 'v0.4.2',
+    GITHUB_REF: 'refs/tags/v0.4.2',
+    RELEASE_TAG_NAME: 'v0.4.2',
+  };
+  assert.deepEqual(validateReleaseEnvironment(valid), {
+    tag_name: 'v0.4.2',
+    ref: 'refs/tags/v0.4.2',
+  });
+  assert.throws(
+    () => validateReleaseEnvironment({ ...valid, GITHUB_EVENT_NAME: 'release' }),
+    /tag-push event/,
+  );
+  assert.throws(
+    () => validateReleaseEnvironment({ ...valid, GITHUB_REF_TYPE: 'branch' }),
+    /requires a tag ref/,
+  );
+  assert.throws(
+    () => validateReleaseEnvironment({ ...valid, RELEASE_TAG_NAME: 'v0.4.3' }),
+    /must equal GITHUB_REF_NAME/,
+  );
+  assert.throws(
+    () => validateReleaseEnvironment({ ...valid, GITHUB_REF: 'refs/heads/main' }),
+    /must exactly identify the release tag/,
+  );
+});
+
 test('GitHub API failures are fail-closed without reflecting response bodies', async () => {
   const secretBody = 'private diagnostic body';
   await assert.rejects(
@@ -354,7 +344,9 @@ test('publish workflow separates read-only verification from pinned-SHA OIDC pub
     'utf8',
   );
   const workflow = parseYaml(workflowSource);
-  assert.deepEqual(workflow.on.release.types, ['published']);
+  assert.deepEqual(workflow.on.push.tags, ['v*']);
+  assert.equal(workflow.concurrency.group, 'npm-publish');
+  assert.equal(workflow.concurrency['cancel-in-progress'], false);
   assert.deepEqual(workflow.permissions, {});
 
   const verifyJob = workflow.jobs.verify;
@@ -362,10 +354,13 @@ test('publish workflow separates read-only verification from pinned-SHA OIDC pub
   assert.equal(verifyJob.permissions.actions, 'read');
   assert.equal(verifyJob.permissions.contents, 'read');
   assert.equal(verifyJob.permissions['id-token'], undefined);
+  assert.equal(verifyJob.environment, undefined);
   assert.equal(publishJob.needs, 'verify');
+  assert.equal(publishJob.environment.name, 'npm-publish');
   assert.equal(publishJob.permissions.contents, 'read');
   assert.equal(publishJob.permissions['id-token'], 'write');
   assert.equal(publishJob.permissions.actions, undefined);
+  assert.doesNotMatch(workflowSource, /NPM_TOKEN|NODE_AUTH_TOKEN|_authToken/);
 
   const verifyCheckout = verifyJob.steps.find((step) => step.uses?.startsWith('actions/checkout@'));
   assert.equal(verifyCheckout.with.ref, '${{ github.sha }}');
@@ -376,7 +371,7 @@ test('publish workflow separates read-only verification from pinned-SHA OIDC pub
   assert.ok(guard, 'release-target verification step must exist');
   assert.equal(guard.id, 'guard');
   assert.equal(guard.env.GITHUB_TOKEN, '${{ github.token }}');
-  assert.equal(guard.env.RELEASE_TAG_NAME, '${{ github.event.release.tag_name }}');
+  assert.equal(guard.env.RELEASE_TAG_NAME, '${{ github.ref_name }}');
   assert.match(guard.run, /node scripts\/verify-release-target\.mjs/);
   assert.equal(
     verifyJob.outputs.tag_commit,

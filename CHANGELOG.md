@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- Hardened trusted publishing so a version-matched release tag must belong to protected `main` and have successful exact-SHA Node.js 18, 20, 22, and 24 CI before npm publication.
+## 0.4.2 - 2026-08-25
+
+- Hardened trusted publishing so an exact version tag must equal the protected `main` head, have successful exact-SHA Node.js 18, 20, 22, and 24 CI, and pass the reviewer-gated `npm-publish` environment before npm publication.
+- Replaced the published-release trigger with an immutable tag-push trigger so the environment approval gates publication before the GitHub Release is created.
 
 ## 0.4.1 - 2026-08-24
 

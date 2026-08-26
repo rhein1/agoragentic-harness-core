@@ -2,9 +2,10 @@
 
 ## Current release gate
 
-- Require an owner-approved GitHub release tag that exactly matches `v<package.json version>`.
-- Require the release-event SHA and live tag ref to match, belong to `main` while it is protected, and have successful exact-SHA CI on Node.js 18, 20, 22, and 24.
-- Publish only from the release-tag workflow through npm trusted publishing with provenance; never add a local or token-based publish path.
+- Require an exact `v<package.json version>` tag-push whose immutable checkout and live tag ref resolve to the current protected `main` head.
+- Require successful exact-SHA CI on Node.js 18, 20, 22, and 24 before the release workflow reaches publication.
+- Publish only from the reviewer-gated `npm-publish` environment through npm trusted publishing with provenance; never add a local or token-based publish path.
+- Create the GitHub Release only after the registry publication and provenance have been independently verified.
 - Independently verify the npm version, `latest` tag, tarball integrity, source commit, and provenance after publication.
 
 ## Completed foundations
@@ -12,6 +13,7 @@
 - Published and independently verified the standalone `0.3.1` CLI-manifest recovery release.
 - Replaced the integrations-repository implementation with a thin compatibility pointer to this canonical repository.
 - Released the bounded, observer-only AHP `0.8.0` adapter in `0.4.0` and its best-effort subscription cleanup in `0.4.1`.
+- Added a tag-push release rail and protected `npm-publish` environment for `0.4.2`.
 - Preserved Node.js 18 compatibility, loopback-only live transport, fixed redaction, bounded artifacts, and forced-false authority.
 
 ## Near term
@@ -21,7 +23,6 @@
 - Expand deterministic AHP conformance and real-host qualification evidence without adding host-control authority.
 - Preserve exact source and revision evidence for optional Memory and SkillOpt bridges.
 - Improve Windows, Linux, and macOS package smoke coverage.
-- Narrow the owner-level tagged-workflow boundary with a reviewed tag ruleset or protected publishing environment.
 
 Any governed AHP action or write/control support is a separate future tranche. It requires a new design, threat model, authority review, tests, and explicit approval; observer evidence does not pre-authorize it.
 

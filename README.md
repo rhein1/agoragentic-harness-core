@@ -471,7 +471,7 @@ Use `--help` on the relevant command for exact options supported by the installe
 
 ## Source development
 
-Published packages are built only from exact GitHub release tags through npm trusted publishing. The package smoke gate installs the packed artifact outside the source repository and verifies CLI shims, README assets and links, exported subpaths, schemas, and local no-spend commands before release.
+Published packages are built only from exact GitHub tag pushes that resolve to the current protected `main` head, pass the exact-SHA CI matrix, and receive approval through the protected `npm-publish` environment. npm trusted publishing supplies the short-lived publication identity and provenance; the repository includes no local or long-lived-token publish path. The package smoke gate installs the packed artifact outside the source repository and verifies CLI shims, README assets and links, exported subpaths, schemas, and local no-spend commands before release.
 
 ```bash
 git clone https://github.com/rhein1/agoragentic-harness-core.git
