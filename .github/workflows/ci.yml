@@ -26,8 +26,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            test/fixtures/mcp-sdk/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - if: matrix.node-version != 18
+        run: |
+          npm ci --prefix test/fixtures/mcp-sdk --ignore-scripts --engine-strict --strict-peer-deps --no-audit --no-fund
+          npm test --prefix test/fixtures/mcp-sdk
       - if: matrix.node-version == 22
         run: |
           python3 --version

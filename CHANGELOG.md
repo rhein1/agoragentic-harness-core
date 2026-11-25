@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add opt-in shadow observation for generic tool proposals, with a JavaScript adapter, a Python source example, and shared hash fixtures.
+- Add the opt-in `observeMcpToolCall` projection for decoded MCP `tools/call` requests. It is passive local evidence only: the host owns the SDK transport, dispatch, authentication, and any enforcement decision.
 
 ## 0.4.2 - 2026-08-25
 

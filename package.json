@@ -79,7 +79,7 @@
     "yaml": "^2.5.0"
   },
   "scripts": {
-    "test": "node --test test/cli.test.cjs test/evaluation-adapters.test.mjs test/memory-skillopt.test.mjs test/ahp-observer.test.mjs test/release-target.test.mjs test/tool-observe.test.mjs",
+    "test": "node --test test/cli.test.cjs test/evaluation-adapters.test.mjs test/memory-skillopt.test.mjs test/ahp-observer.test.mjs test/release-target.test.mjs test/tool-observe.test.mjs test/mcp-tool-observe.test.mjs",
     "test:observe-parity": "node --test test/tool-observe-parity.test.mjs",
     "pack:smoke": "node scripts/pack-smoke.mjs",
     "prepublishOnly": "npm test && npm run pack:smoke"

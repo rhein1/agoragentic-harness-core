@@ -195,3 +195,40 @@ export async function observeToolProposal({ mode = 'off', context, arguments: ar
   }
   return result;
 }
+
+/**
+ * Project a decoded MCP tools/call request into shadow evidence. The caller
+ * supplies the trusted server reference and owns the transport and dispatch.
+ */
+export async function observeMcpToolCall({ mode = 'off', request, server, context, assess } = {}) {
+  if (mode === 'off') return null;
+  if (mode !== 'observe') throw new RangeError('Unsupported tool observation mode');
+
+  let proposal;
+  let args;
+  try {
+    const message = dataFields(request);
+    if (message.method?.value !== 'tools/call') invalid();
+    const params = dataFields(message.params?.value);
+    const name = params.name?.value;
+    if (typeof name !== 'string' || !/^[A-Za-z0-9_.-]{1,128}(?![\s\S])/.test(name)) invalid();
+    args = params.arguments ? params.arguments.value : {};
+    dataFields(args);
+
+    const fields = dataFields(context);
+    for (const key of ['tool', 'operation', 'framework', 'adapter_version']) {
+      if (Object.hasOwn(fields, key)) invalid();
+    }
+    proposal = Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, field.value]));
+    Object.assign(proposal, {
+      tool: controlValueHash(['agoragentic.mcp-tool.v1', ref(server), name]),
+      operation: 'tools.call',
+      framework: 'mcp',
+      adapter_version: '1',
+    });
+  } catch {
+    return observeToolProposal({ mode });
+  }
+
+  return observeToolProposal({ mode, context: proposal, arguments: args, assess });
+}
