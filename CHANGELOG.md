@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add opt-in shadow observation for generic tool proposals, with a JavaScript adapter, a Python source example, and shared hash fixtures.
+
 ## 0.4.2 - 2026-08-25
 
 - Hardened trusted publishing so an exact version tag must equal the protected `main` head, have successful exact-SHA Node.js 18, 20, 22, and 24 CI, and pass the reviewer-gated `npm-publish` environment before npm publication.

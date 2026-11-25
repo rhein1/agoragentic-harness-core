@@ -1,0 +1,78 @@
+{
+  "context": {
+    "request_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "principal": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "agent": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "session": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "tool": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "resource": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "authority": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "policy": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "idempotency_key_hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "trace": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "framework": "generic-tool",
+    "adapter_version": "1.0.0",
+    "operation": "inspect",
+    "consequence": "local-read",
+    "policy_version": "1",
+    "data_classes": [
+      "synthetic",
+      "local"
+    ],
+    "external_side_effect_classes": [],
+    "proposed_at": "2030-03-01T00:00:00.000Z",
+    "expires_at": "2030-03-01T00:05:00.000Z"
+  },
+  "vectors": {
+    "nested": {
+      "value": {
+        "nested": {
+          "z": 5,
+          "a": [
+            true,
+            null,
+            "text"
+          ]
+        },
+        "mode": "observe"
+      },
+      "hash": "sha256:777183abc0001cb02e89093f78985d199ab2e9d3de5210700c02b37387209397"
+    },
+    "unicode": {
+      "value": {
+        "label": "Café 😺  ",
+        "keys": {
+          "": 1,
+          "😀": 2
+        }
+      },
+      "hash": "sha256:647da641927c77a4d20eee2c89565c7a3d2c59a271cf64f2ffcd9feacfce1dd5"
+    },
+    "integral": {
+      "value": 1,
+      "hash": "sha256:04696c13c17f148054536e7918db2276638ffaf47f90399743d92569b86468e4"
+    },
+    "exponents": {
+      "value": [
+        1e-7,
+        5e-324,
+        2.220446049250313e-16
+      ],
+      "hash": "sha256:00c0b243f1223ef57e0194ff99310c1d674de7cbe015d1d6d88e020e657fbdda"
+    },
+    "numeric": {
+      "value": {
+        "2": "two",
+        "10": "ten"
+      },
+      "hash": "sha256:f6a8570ea0afc048605780181c19554d02cb0891a03c8cb9b68a5d89172c49c0"
+    },
+    "integers": {
+      "value": [
+        9007199254740991,
+        -9007199254740991
+      ],
+      "hash": "sha256:b4dd1421080d271588483199c1c1587e7650e38a5eef8108f7104422c8a2c265"
+    }
+  }
+}
