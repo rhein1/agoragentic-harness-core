@@ -15,6 +15,7 @@
     "./adapters": "./src/adapters/index.mjs",
     "./adapters/ahp": "./src/adapters/ahp-observer.mjs",
     "./adapters/claude-code": "./src/adapters/claude-code.mjs",
+    "./adapters/tool-observe": "./src/adapters/tool-observe.mjs",
     "./evaluations": "./src/evaluations/index.mjs",
     "./memory-skillopt": "./src/memory-skillopt.mjs",
     "./kernel/events": "./src/kernel/events.mjs",
@@ -29,6 +30,7 @@
     "./schema/agent-os-harness.v1.json": "./schema/agent-os-harness.v1.json",
     "./schema/ahp-observation.v1.json": "./schema/ahp-observation.v1.json",
     "./schema/budget-policy.v1.json": "./schema/budget-policy.v1.json",
+    "./schema/control-observation.v1.json": "./schema/control-observation.v1.json",
     "./schema/harness-approval-request.v1.json": "./schema/harness-approval-request.v1.json",
     "./schema/harness-context-import.v1.json": "./schema/harness-context-import.v1.json",
     "./schema/harness-event.v1.json": "./schema/harness-event.v1.json",
@@ -77,7 +79,8 @@
     "yaml": "^2.5.0"
   },
   "scripts": {
-    "test": "node --test test/cli.test.cjs test/evaluation-adapters.test.mjs test/memory-skillopt.test.mjs test/ahp-observer.test.mjs test/release-target.test.mjs",
+    "test": "node --test test/cli.test.cjs test/evaluation-adapters.test.mjs test/memory-skillopt.test.mjs test/ahp-observer.test.mjs test/release-target.test.mjs test/tool-observe.test.mjs",
+    "test:observe-parity": "node --test test/tool-observe-parity.test.mjs",
     "pack:smoke": "node scripts/pack-smoke.mjs",
     "prepublishOnly": "npm test && npm run pack:smoke"
   },

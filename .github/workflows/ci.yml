@@ -28,6 +28,10 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm test
+      - if: matrix.node-version == 22
+        run: |
+          python3 --version
+          npm run test:observe-parity
       - run: node examples/frameworks/validate.mjs
       - run: npm run pack:smoke
       - run: npm pack --dry-run --json

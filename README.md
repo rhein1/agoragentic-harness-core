@@ -185,7 +185,7 @@ List the packaged adapter contracts:
 npx agoragentic-harness-core@latest adapters
 ```
 
-Claude Code reports `status: "enforcement"` for its packaged live pre-tool decision hook. The source tree also reports OpenCode enforcement through `@agoragentic/opencode`, limited to its exact contract fixture and local tests. The AHP entry, `ahp`, reports `status: "observer"` with `authority: "local_no_spend_observation_only"`. Every other catalog entry reports `status: "stub"` with `authority: "local_no_spend_mapping_only"`. Stub entries are mapping contracts, not executable framework adapters.
+Claude Code reports `status: "enforcement"` for its packaged live pre-tool decision hook. The source tree also reports OpenCode enforcement through `@agoragentic/opencode`, limited to its exact contract fixture and local tests. The AHP and generic tool observation entries, `ahp` and `tool_observe`, report `status: "observer"` with `authority: "local_no_spend_observation_only"`. Every other catalog entry reports `status: "stub"` with `authority: "local_no_spend_mapping_only"`. Stub entries are mapping contracts, not executable framework adapters.
 
 Public declarative mapping examples live in [the repository examples directory](examples/frameworks/) and cover:
 
@@ -211,6 +211,10 @@ optional owner-reviewed Agent OS preview export
 ```
 
 A mapping contract must not be presented as executable integration support. Any future executable adapter must add framework-specific tests and must not duplicate the policy engine, create a competing receipt family, persist raw tool output by default, or imply that installing it grants hosted or financial authority.
+
+### Generic tool observation
+
+The current source tree includes an opt-in JavaScript observer and a Python source example for generic host tool proposals. Both emit hash-bound shadow evidence while the host retains dispatch and authority. See [Observe generic tool proposals](examples/frameworks/tool-observe/README.md).
 
 ### Microsoft Agent Host Protocol observation
 

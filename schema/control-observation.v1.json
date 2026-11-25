@@ -1,0 +1,411 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Local tool observation",
+  "description": "Evidence of a host-owned proposal and optional shadow assessment. Carries no execution or approval authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "hash_format",
+    "mode",
+    "authoritative",
+    "execution_observed",
+    "status",
+    "reason",
+    "request",
+    "request_hash",
+    "decision"
+  ],
+  "properties": {
+    "schema": {
+      "const": "agoragentic.control-observation.v1"
+    },
+    "hash_format": {
+      "const": "agoragentic.control-json-binary64.v1"
+    },
+    "mode": {
+      "const": "observe"
+    },
+    "authoritative": {
+      "const": false
+    },
+    "execution_observed": {
+      "const": false
+    },
+    "status": {
+      "enum": [
+        "observed",
+        "unavailable"
+      ]
+    },
+    "reason": {
+      "enum": [
+        null,
+        "invalid_proposal",
+        "assessment_unavailable"
+      ]
+    },
+    "request": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/request"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "request_hash": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "decision": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/decision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "status": {
+          "const": "observed"
+        },
+        "reason": {
+          "type": "null"
+        },
+        "request": {
+          "$ref": "#/definitions/request"
+        },
+        "request_hash": {
+          "$ref": "#/definitions/ref"
+        },
+        "decision": {
+          "$ref": "#/definitions/decision"
+        }
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "unavailable"
+        },
+        "reason": {
+          "const": "invalid_proposal"
+        },
+        "request": {
+          "type": "null"
+        },
+        "request_hash": {
+          "type": "null"
+        },
+        "decision": {
+          "type": "null"
+        }
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "unavailable"
+        },
+        "reason": {
+          "const": "assessment_unavailable"
+        },
+        "request": {
+          "$ref": "#/definitions/request"
+        },
+        "request_hash": {
+          "$ref": "#/definitions/ref"
+        },
+        "decision": {
+          "type": "null"
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "ref": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "minLength": 71,
+      "maxLength": 71
+    },
+    "label": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:-]{0,63}(?![\\s\\S])"
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "minLength": 24,
+      "maxLength": 24
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "hash_format",
+        "mode",
+        "request_id",
+        "principal",
+        "agent",
+        "session",
+        "tool",
+        "resource",
+        "authority",
+        "policy",
+        "idempotency_key_hash",
+        "trace",
+        "arguments_hash",
+        "action_hash",
+        "delegation",
+        "model",
+        "economic_context",
+        "framework",
+        "adapter_version",
+        "operation",
+        "consequence",
+        "policy_version",
+        "data_classes",
+        "external_side_effect_classes",
+        "proposed_at",
+        "expires_at"
+      ],
+      "properties": {
+        "schema": {
+          "const": "agoragentic.control-request.v1"
+        },
+        "hash_format": {
+          "const": "agoragentic.control-json-binary64.v1"
+        },
+        "mode": {
+          "const": "observe"
+        },
+        "request_id": {
+          "$ref": "#/definitions/ref"
+        },
+        "principal": {
+          "$ref": "#/definitions/ref"
+        },
+        "agent": {
+          "$ref": "#/definitions/ref"
+        },
+        "session": {
+          "$ref": "#/definitions/ref"
+        },
+        "tool": {
+          "$ref": "#/definitions/ref"
+        },
+        "resource": {
+          "$ref": "#/definitions/ref"
+        },
+        "authority": {
+          "$ref": "#/definitions/ref"
+        },
+        "policy": {
+          "$ref": "#/definitions/ref"
+        },
+        "idempotency_key_hash": {
+          "$ref": "#/definitions/ref"
+        },
+        "trace": {
+          "$ref": "#/definitions/ref"
+        },
+        "arguments_hash": {
+          "$ref": "#/definitions/ref"
+        },
+        "action_hash": {
+          "$ref": "#/definitions/ref"
+        },
+        "delegation": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "economic_context": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "framework": {
+          "$ref": "#/definitions/label"
+        },
+        "adapter_version": {
+          "$ref": "#/definitions/label"
+        },
+        "operation": {
+          "$ref": "#/definitions/label"
+        },
+        "consequence": {
+          "$ref": "#/definitions/label"
+        },
+        "policy_version": {
+          "$ref": "#/definitions/label"
+        },
+        "data_classes": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/label"
+          }
+        },
+        "external_side_effect_classes": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/label"
+          }
+        },
+        "proposed_at": {
+          "$ref": "#/definitions/time"
+        },
+        "expires_at": {
+          "$ref": "#/definitions/time"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "hash_format",
+        "mode",
+        "request_hash",
+        "outcome",
+        "policy",
+        "policy_version",
+        "authority",
+        "delegation",
+        "expires_at",
+        "transformation_hash",
+        "approval_proposal_ref",
+        "authoritative",
+        "execution_observed",
+        "decision_hash"
+      ],
+      "properties": {
+        "schema": {
+          "const": "agoragentic.control-decision.v1"
+        },
+        "hash_format": {
+          "const": "agoragentic.control-json-binary64.v1"
+        },
+        "mode": {
+          "const": "observe"
+        },
+        "request_hash": {
+          "$ref": "#/definitions/ref"
+        },
+        "outcome": {
+          "enum": [
+            "allow",
+            "ask",
+            "modify",
+            "deny"
+          ]
+        },
+        "policy": {
+          "$ref": "#/definitions/ref"
+        },
+        "policy_version": {
+          "$ref": "#/definitions/label"
+        },
+        "authority": {
+          "$ref": "#/definitions/ref"
+        },
+        "delegation": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "$ref": "#/definitions/time"
+        },
+        "transformation_hash": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approval_proposal_ref": {
+          "type": "null"
+        },
+        "authoritative": {
+          "const": false
+        },
+        "execution_observed": {
+          "const": false
+        },
+        "decision_hash": {
+          "$ref": "#/definitions/ref"
+        }
+      },
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "modify"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "transformation_hash": {
+            "$ref": "#/definitions/ref"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "transformation_hash": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  }
+}
