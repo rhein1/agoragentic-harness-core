@@ -185,7 +185,7 @@ List the packaged adapter contracts:
 npx agoragentic-harness-core@latest adapters
 ```
 
-Claude Code reports `status: "enforcement"` for its packaged live pre-tool decision hook. The source tree also reports OpenCode enforcement through `@agoragentic/opencode`, limited to its exact contract fixture and local tests. The AHP and generic tool observation entries, `ahp` and `tool_observe`, report `status: "observer"` with `authority: "local_no_spend_observation_only"`. Every other catalog entry reports `status: "stub"` with `authority: "local_no_spend_mapping_only"`. Stub entries are mapping contracts, not executable framework adapters.
+Claude Code reports `status: "enforcement"` for its packaged live pre-tool decision hook. The source tree also reports OpenCode enforcement through `@agoragentic/opencode`, limited to its exact contract fixture and local tests. The AHP, generic tool observation, and MCP tool observation entries, `ahp`, `tool_observe`, and `mcp_tool_observe`, report `status: "observer"` with `authority: "local_no_spend_observation_only"`. Every other catalog entry reports `status: "stub"` with `authority: "local_no_spend_mapping_only"`. Stub entries are mapping contracts, not executable framework adapters.
 
 Public declarative mapping examples live in [the repository examples directory](examples/frameworks/) and cover:
 
@@ -215,6 +215,8 @@ A mapping contract must not be presented as executable integration support. Any 
 ### Generic tool observation
 
 The current source tree includes an opt-in JavaScript observer and a Python source example for generic host tool proposals. Both emit hash-bound shadow evidence while the host retains dispatch and authority. See [Observe generic tool proposals](examples/frameworks/tool-observe/README.md).
+
+The same public `agoragentic-harness-core/adapters/tool-observe` subpath exports the opt-in `observeMcpToolCall` projection for decoded MCP `tools/call` requests. A host supplies `{ mode: "observe", request, server, context, assess }`; the projection binds the trusted server reference, tool name, and argument hash into the generic shadow-observation contract. The host still owns its MCP SDK client or server handler, transport, authentication, dispatch, and any enforcement decision. This is local passive evidence only: it creates no transport, approval, enforcement, provider, wallet, x402, hosted-runtime, or execution authority. MCP remains a mapping entry in the catalog; `mcp_tool_observe` is the separate observer-only entry.
 
 ### Microsoft Agent Host Protocol observation
 
