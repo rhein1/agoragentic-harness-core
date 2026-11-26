@@ -1569,9 +1569,8 @@ test('pending-subscribe action bursts retain only bounded sanitized evidence', a
     }, {
       channels,
       duration_ms: 5_000,
-      request_timeout_ms: 2_000,
     });
-    assert.equal(run.result.status, 'completed');
+    assert.equal(run.result.status, 'completed', run.result.termination_reason);
     assert.equal(run.artifacts.summary.counts.snapshots, 2);
     assert.equal(run.artifacts.summary.counts.notifications, 2);
     assert.deepEqual(
@@ -1599,9 +1598,8 @@ test('pending-subscribe action bursts retain only bounded sanitized evidence', a
     }, {
       channels,
       duration_ms: 5_000,
-      request_timeout_ms: 500,
     });
-    assert.equal(run.result.status, 'completed');
+    assert.equal(run.result.status, 'completed', run.result.termination_reason);
     assert.equal(run.artifacts.summary.counts.unique_actions, 2);
     assert.equal(run.artifacts.summary.counts.out_of_order_observed, 0);
     assert.deepEqual(
@@ -1633,9 +1631,8 @@ test('pending-subscribe action bursts retain only bounded sanitized evidence', a
       channels,
       max_events: 20,
       duration_ms: 5_000,
-      request_timeout_ms: 500,
     });
-    assert.equal(run.result.status, 'completed');
+    assert.equal(run.result.status, 'completed', run.result.termination_reason);
     assert.equal(run.result.termination_reason, 'transport_closed');
     assert.equal(run.artifacts.summary.counts.snapshots, 2);
     assert.equal(run.artifacts.summary.counts.unique_actions, 8);
@@ -1668,9 +1665,8 @@ test('pending-subscribe action bursts retain only bounded sanitized evidence', a
       channels,
       max_events: 4,
       duration_ms: 5_000,
-      request_timeout_ms: 500,
     });
-    assert.equal(run.result.status, 'partial');
+    assert.equal(run.result.status, 'partial', run.result.termination_reason);
     assert.equal(run.result.termination_reason, 'event_limit');
     assert.equal(run.artifacts.summary.counts.snapshots, 1);
     assert.equal(run.artifacts.summary.counts.unique_actions, 0);
